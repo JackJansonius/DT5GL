@@ -1,0 +1,64 @@
+
+
+
+
+Table 0: 
+If:                                            | 0| 1| 2| 3|
+'Next box'                                     | Y| Y| Y| N|
+Box in [1,2,3]                                 | Y| Y| N| -|
+TruthSum = 1                                   | Y| N| -| -|
+Then:                                                 
+Result is Finished                             |  |  |  | X|
+Result is Wrong_Boxnr                          |  |  | X|  |
+Result is Gold_in_box                          | X|  |  |  |
+Result is Gold_not_in_box                      |  | X|  |  |
+# .......
+
+Proposition: 'Next box'
+Askable_using: "Next box?"
+
+Attribute: Box  
+Askable_using: "Box nr?"
+
+rTable 1:
+If:                                            | 0| 1| 2|
+Box = 1                                        | Y| N| N|
+Box = 2                                        | -| Y| N|
+Box = 3                                        | -| -| Y|
+Then:
+Box1_here = 1                                  | X|  |  |
+Box2_not_here = 1                              | X|  | X|
+Box3_not_box1 = 1                              |  | X| X|
+# .......
+
+
+Attribute: TruthSum
+Equals: Box1_here + Box2_not_here + Box3_not_box1
+
+Attribute: Truthspeaker   Type: Integer
+Equals: 1 if Box1_here else 2 if Box2_not_here else 3 if Box3_not_box1 else 0
+
+GoalAttribute: Result
+Repeat_until: Finished
+
+Case: Finished
+Print: "Finished!"
+Case: Wrong_Boxnr
+Print: "Enter 1, 2 or 3!" 
+
+Case: Gold_in_box
+Print: "Gold in box nr %s!"       Box
+Print: "Truthspeaker is box: %s." Truthspeaker
+Print: "---------------------"
+Case: Gold_not_in_box
+Print: "Gold not in boxnr %s!"    Box
+Print: "---------------------"
+
+
+
+
+
+
+
+
+

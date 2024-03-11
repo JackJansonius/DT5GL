@@ -1,0 +1,88 @@
+
+
+
+Table 0: 
+If:                                            | 0| 1| 2| 3| 4| 5| 6|
+'Continue'                                     | Y| Y| Y| Y| Y| Y| N|
+#Step1_symptoms >= Treshold                    | Y| N| N| N| N| N| -| 
+#Step1_symptoms >= Treshold - Weight_step2     | -| Y| Y| N| N| N| -|
+#Step1_symptoms = 0                            | -| -| -| Y| Y| N| -|
+#Step2_symptom  > 0                            | -| Y| N| Y| N| -| -|
+Then:                                                  
+Action is finished                             |  |  |  |  |  |  | X|
+Action is PCR-testing                          | X| X|  |  |  |  |  |
+Action is standard_quarantine_practice         |  |  | X| X|  | X|  |
+Action is not_required                         |  |  |  |  | X|  |  |
+# .......
+
+
+Proposition: 'Continue'
+Askable_using: "Next client?"
+
+Attribute: #Step1_symptoms  
+Equals: Sneezing + Coughing + Loss_of_Smell + Loss_of_Taste
+
+Attribute: Sneezing                             Type: Integer
+Askable_using: "Sneezing (0=False, 1=True)?"
+Attribute: Coughing                             Type: Integer 
+Askable_using: "Coughing (0=False, 1=True)?"
+Attribute: Loss_of_Smell                        Type: Integer
+Askable_using: "Loss of Smell(0=False, 1=True)?"
+Attribute: Loss_of_Taste                        Type: Integer
+Askable_using: "Loss of Taste (0=False, 1=True)?"
+
+Attribute: Treshold                             Type: Integer
+Equals: 4
+Attribute: Weight_step2                         Type: Integer
+Equals: 2
+
+Attribute: #Step2_symptom
+Equals: Fever * Weight_step2
+
+Table 1: 
+If:                                            | 0| 1| 2| 3|
+Age >= 10                                      | Y| Y| N| N|
+Temperature >= 38.0                            | Y| N| -| -|
+Temperature >= 37.2                            | -| -| Y| N|
+Then: 
+Fever = 1                                      | X|  | X|  |
+Fever = 0                                      |  | X|  | X|
+# .......
+
+Attribute: Age
+Askable_using: "What is the age?"
+Attribute: Temperature 
+Askable_using: "What is the temperature?"
+
+
+GoalAttribute: Action
+Repeat_until: finished
+
+Case: finished
+Print: "Finished!"
+
+Case: PCR-testing
+Print: "Subsequent PCR testing is recommended!"
+Print: "Step 1 symptoms: %s. "        #Step1_symptoms
+Print: "Weight step2 symptom: %s. "   #Step2_symptom.getvalue   
+
+Case: standard_quarantine_practice 
+Print: "Standard quarantine practice is recommended." 
+Print: "Step 1 symptoms: %s. "        #Step1_symptoms
+Print: "Weight step2 symptom: %s. "   #Step2_symptom.getvalue   
+
+Case: not_required
+Print: "No action is required."
+Print: "Step 1 symptoms: %s. "        #Step1_symptoms
+Print: "Weight step2 symptom: %s. "   #Step2_symptom.getvalue   
+
+
+
+
+
+
+
+
+
+
+

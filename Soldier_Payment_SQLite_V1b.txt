@@ -1,0 +1,245 @@
+
+
+SQLite_database: "Database/Soldier Payment.db"
+
+# V2: detecting gaps and overlaps...
+
+# Reference day = the 15th of the month. 
+
+Table 0:
+If:                                            | 0| 1|
+'Next soldier present'                         | Y| N|     
+Then:                                   
+NextSoldier is Selected                        | X|  |
+NextSoldier is Finished                        |  | X|
+# .......
+# Repeat until: Finished
+
+Proposition: 'Next soldier present'
+Obtain_instance_from_database_view: soldier
+
+Table 1: 
+If:                                            | 0| 1| 
+Next year in [firstYear-lastYear]              | Y| N|
+Then:                                  
+EvalYear is Selected                           | X|  |
+EvalYear is Finished                           |  | X|
+# .......
+# Repeat until: Finished
+
+Table 2: 
+If:                                            | 0| 1| 2| 3| 4| 5|
+Next month in [firstMonth-lastMonth]           | Y| Y| Y| Y| Y| N|
+service.description = "retired"                | Y| Y| N| N| N| -|
+current_pay_rate = 0                           | Y| N| -| -| -| -|
+errorstring = ""                               | -| -| Y| Y| N| -|   
+current_pay_rate = pay_rate_this_month         | -| -| Y| N| -| -|
+Then:                                                          
+EvalMonth is Skip                              | X|  | X|  |  |  |
+EvalMonth is NoPayRate                         |  | X|  |  |  |  |
+EvalMonth is NewPayRate                        |  |  |  | X|  |  |
+EvalMonth is Error                             |  |  |  |  | X|  |
+EvalMonth is Finished                          |  |  |  |  |  | X|
+# .......
+# Repeat until: Finished
+
+
+# Determine range of years to be checked: [firstYear-lastYear]
+Attribute: firstYear                 Type: Integer
+Equals: int(soldier.yearmonth_start/100)
+
+Attribute: lastYear                  Type: Integer
+Equals: int(soldier.yearmonth_end/100)
+
+# Determine range of months to be checked within selected year: [firstMonth-lastMonth] 
+Attribute: firstMonth                Type: Integer
+Equals: soldier.yearmonth_start % 100 if year == firstYear else 1
+
+Attribute: lastMonth                 Type: Integer
+Equals: soldier.yearmonth_end % 100 if year == lastYear  else 12 
+
+Attribute: refdate                   Type: Text
+Equals: str(year) + "-" + zerofill(month,2) + "-15"
+
+Attribute: fromdate                  Type: Text
+Equals: "01/" + zerofill(month,2) + "/" + str(year) 
+
+Attribute: soldier.yearmonth_start   Type: Integer
+Attribute: soldier.yearmonth_end     Type: Integer
+
+Attribute: pay_rate_this_month       Type: Real
+Equals: base.rate + rank.rate + profession.rate + service.rate + unit.rate + combat.rate
+
+Attribute: errorstring
+Equals: rankstring + professionstring + servicestring + unitstring + combatstring
+
+Attribute: rankstring                Type: Text
+Equals: "Missing Rank "    if rank.no == 0 else  \
+        "Overlap in Rank " if rank.no > 1  else ""
+
+Attribute: professionstring          Type: Text
+Equals: "Missing Profession "    if profession.no == 0 else  \
+        "Overlap in Profession " if profession.no > 1  else ""
+        
+Attribute: servicestring             Type: Text
+Equals: "Missing Service "    if service.no == 0 else  \
+        "Overlap in Service " if service.no > 1  else ""
+
+Attribute: unitstring                Type: Text
+Equals: "Missing Unit "    if unit.no == 0 else  \
+        "Overlap in Unit " if unit.no > 1  else ""
+
+Attribute: combatstring              Type: Text
+Equals: "Missing Combat "    if combat.no == 0 else  \
+        "Overlap in Combat " if combat.no > 1  else ""        
+
+
+Attribute: base.rate                 Type: Real
+Attribute: rank.rate                 Type: Real
+Attribute: profession.rate           Type: Real
+Attribute: service.rate              Type: Real
+Attribute: unit.rate                 Type: Real
+Attribute: combat.rate               Type: Real
+Attribute: base.no                   Type: Integer
+Attribute: rank.no                   Type: Integer
+Attribute: profession.no             Type: Integer
+Attribute: service.no                Type: Integer
+Attribute: unit.no                   Type: Integer
+Attribute: combat.no                 Type: Integer
+
+
+########################### Database views ###########################
+
+Database_view: soldier
+With_attributes: id, name, yearmonth_start, yearmonth_end
+Query:
+ SELECT id, name, yearmonth_start, yearmonth_end
+  FROM soldier
+ LIMIT 1 OFFSET %s
+With_arguments: soldier.auto_index
+
+
+Database_view: base
+With_attributes: description, rate, no
+Query:
+SELECT base.description, base_rate.rate, count(*)
+  FROM base_contract 
+       JOIN base ON base_contract.type = base.id
+       JOIN base_rate ON base.id = base_rate.base_id
+ WHERE base_contract.soldierid = %s AND 
+       '%s' BETWEEN base_contract.date_from AND COALESCE(base_contract.date_to,'9999-12-31') AND 
+       '%s' BETWEEN base_rate.date_from AND COALESCE(base_rate.date_to,'9999-12-31')  
+With_arguments: soldier.id, refdate, refdate 
+
+
+Database_view: rank
+With_attributes: description, rate, no
+Query:
+SELECT rank.description, rank_rate.rate, count(*)
+  FROM rank_contract 
+       JOIN rank ON rank_contract.type = rank.id
+       JOIN rank_rate ON rank.id = rank_rate.rankid
+ WHERE rank_contract.soldierid = %s AND 
+       '%s' BETWEEN rank_contract.date_from AND COALESCE(rank_contract.date_to,'9999-12-31') AND 
+       '%s' BETWEEN rank_rate.date_from AND COALESCE(rank_rate.date_to,'9999-12-31')   
+With_arguments: soldier.id, refdate, refdate 
+
+
+Database_view: profession
+With_attributes: description, rate, no
+Query:
+SELECT profession.description, profession_rate.rate, count(*)
+  FROM profession_contract 
+       JOIN profession ON profession_contract.type = profession.id
+       JOIN profession_rate ON profession.id = profession_rate.professionid
+ WHERE profession_contract.soldierid = %s AND 
+       '%s' BETWEEN profession_contract.date_from AND COALESCE(profession_contract.date_to,'9999-12-31') AND 
+       '%s' BETWEEN profession_rate.date_from AND COALESCE(profession_rate.date_to,'9999-12-31')   
+With_arguments: soldier.id, refdate, refdate 
+
+
+Database_view: service
+With_attributes: description, rate, no
+Query:
+SELECT service.description, service_rate.rate, count(*)
+  FROM service_contract 
+       JOIN service ON service_contract.type = service.id
+       JOIN service_rate ON service.id = service_rate.service_id
+ WHERE service_contract.soldierid = %s AND 
+       '%s' BETWEEN service_contract.date_from AND COALESCE(service_contract.date_to,'9999-12-31') AND 
+       '%s' BETWEEN service_rate.date_from AND COALESCE(service_rate.date_to,'9999-12-31')   
+With_arguments: soldier.id, refdate, refdate 
+
+
+Database_view: unit
+With_attributes: description, rate, no
+Query:
+SELECT unit.description, unit_rate.rate, count(*)
+  FROM unit_contract 
+       JOIN unit ON unit_contract.type = unit.id
+       JOIN unit_rate ON unit.id = unit_rate.unitid
+ WHERE unit_contract.soldierid = %s AND 
+       '%s' BETWEEN unit_contract.date_from AND COALESCE(unit_contract.date_to,'9999-12-31') AND 
+       '%s' BETWEEN unit_rate.date_from AND COALESCE(unit_rate.date_to,'9999-12-31')   
+With_arguments: soldier.id, refdate, refdate 
+
+
+Database_view: combat
+With_attributes: description, rate, no
+Query:
+SELECT combat.description, combat_rate.rate, count(*)
+  FROM combat_contract 
+       JOIN combat ON combat_contract.type = combat.id
+       JOIN combat_rate ON combat.id = combat_rate.combatid
+ WHERE combat_contract.soldierid = %s AND 
+       '%s' BETWEEN combat_contract.date_from AND COALESCE(combat_contract.date_to,'9999-12-31') AND 
+       '%s' BETWEEN combat_rate.date_from AND COALESCE(combat_rate.date_to,'9999-12-31')   
+With_arguments: soldier.id, refdate, refdate 
+
+
+########################### GoalAttributes ###########################
+
+GoalAttribute: NextSoldier
+Repeat_until:  Finished
+
+Case: Finished
+Print: "End!"
+
+Case: Selected 
+Print: "Overview of pay rates for soldier %s. %s over the period: %s-%s:"  soldier.id soldier.name soldier.yearmonth_start soldier.yearmonth_end 
+>>: current_pay_rate = -1.00         # 
+
+
+GoalAttribute: EvalYear
+Repeat_until:  Finished
+
+Case: Finished 
+Print: "---------------------------------------------------------------------------" 
+
+Case: Selected
+Print: "#REM# -  " 
+   
+
+GoalAttribute: EvalMonth
+Repeat_until: Finished
+
+Case: Finished
+Print: "#REM# -  "
+
+Case: Skip
+Print: "#REM# -  "
+
+Case: NoPayRate
+Print: "%s : total payrate = 0 (retired) "  fromdate 
+>>: current_pay_rate = 0
+
+Case: NewPayRate
+Print: "%s : total (%s) = Base(%s) + Rank(%s:%s) + Prof(%s:%s) + Service(%s:%s) + Unit(%s:%s) + Combat(%s:%s)" fromdate pay_rate_this_month base.rate rank.description rank.rate profession.description profession.rate service.description service.rate unit.description unit.rate combat.description combat.rate
+>>: current_pay_rate = pay_rate_this_month
+
+Case: Error
+Print: "%s : %s"  fromdate  errorstring 
+
+
+
+

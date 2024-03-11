@@ -1,0 +1,100 @@
+  
+
+
+Table 0: Vacation days
+If:                                      | 0| 1| 2|
+Subtotal <= 28                           | Y| Y| N|
+Total <= 29                              | Y| N| -|
+Then:
+Vacation_days is Not_restricted          | X|  |  |
+Vacation_days is Restricted_to_maximum   |  | X| X|
+# .......
+
+Attribute: Subtotal
+Equals: Initial_days + Extra_days
+
+Attribute: Total
+Equals: Subtotal + Extra_for_student + Extra_for_veteran
+
+
+
+Table 1: Initial days
+If:                                      | 0|
+'initial statement'                      | -|
+Then:
+Initial_days = 22                        | X|
+# ....... 
+
+Proposition: 'initial statement'
+Askable_using: "xxxxx" 
+
+                                      
+Table 2: Extra days
+If:                                      | 0| 1| 2| 3| 4| 5| 6|
+age < 18                                 | Y| N| N| N| N| N| N|
+age < 45                                 | -| Y| Y| Y| N| N| N|
+age < 60                                 | -| -| -| -| Y| Y| N|
+service < 15                             | -| Y| N| N| -| -| -|
+service < 30                             | -| -| Y| N| Y| N| -|
+Then:
+Extra_days = 0                           |  | X|  |  |  |  |  |
+Extra_days = 2                           |  |  | X|  | X|  |  |
+Extra_days = 5                           | X|  |  |  |  |  |  |
+Extra_days = 8                           |  |  |  | X|  | X| X|
+# .......
+
+Attribute: age
+Askable_using: "What is the years of age of the employee?"
+
+Attribute: service
+Askable_using: "What is the years of service of the employee?"
+
+
+Table 3: Extra for student
+If:                                      | 0| 1| 2|
+age <= 30                                | Y| Y| N|
+'employee is college student'            | Y| N| -|
+Then:                                   
+Extra_for_student = 0                    |  | X| X|
+Extra_for_student = 1                    | X|  |  |
+# .......
+# NB The assumption here is that a college student is not older than 30.
+
+Proposition: 'employee is college student'
+Askable_using: "**?"
+
+Table 4: Extra for veteran
+If:                                      | 0| 1| 2|
+age >= 45                                | Y| Y| N|
+'employee is veteran'                    | Y| N| -|
+Then:                                   
+Extra_for_veteran = 0                    |  | X| X|
+Extra_for_veteran = 2                    | X|  |  |
+# .......
+# NB The assumption here is that a veteran is not younger than 45.
+
+Proposition: 'employee is veteran'
+Askable_using: "**?"
+
+NB: Use .getvalue for Extra_for_student and Extra_for_veteran to suppress backward reasoning in the print-statement! 
+
+GoalAttribute: Vacation_days
+Case: Not_restricted
+Print: "---------------------------------------------"
+Print: "Number of vacation days is: %s." Total
+Print: "---------------------------------------------"
+Print: "Initial days: %s and Extra days: %s." Initial_days Extra_days
+Print: "Extra days for a college student: %s." Extra_for_student
+Print: "Extra days for a veteran: %s." Extra_for_veteran
+Print: "GoalAttribute Vacation_days: %s." Vacation_days
+Print: "---------------------------------------------"
+
+Case: Restricted_to_maximum
+Print: "---------------------------------------------------------"
+Print: "Number of vacation days is restricted to the maximum: 29"
+Print: "---------------------------------------------------------"
+Print: "Sum of Initial days: %s and Extra days: %s gives: %s." Initial_days Extra_days Subtotal
+Print: "Extra days for a college student: %s." Extra_for_student.getvalue
+Print: "Extra days for a veteran: %s." Extra_for_veteran.getvalue
+Print: "GoalAttribute Vacation_days: %s." Vacation_days
+Print: "---------------------------------------------------------" 

@@ -1,0 +1,310 @@
+
+
+
+SQLite_database: "Database/TeamPlayerPerformance.sqlite3"
+
+# playerid's aanvullen met namen. 
+# playerid's aanvullen met teamnamen; worden met dezelfde view opgehaald. 
+# ook hoogste en laagste gemiddelde vermelden.
+# afzonderlijke view voor ophalen aantal personen met min/max gemiddelde.
+# een of meer teams met meeste punten obv. 1 databaseview.
+
+
+# output:
+# "Winner is team %s with %s points!"
+# "Player(s) with highest average performance: "
+# "Player(s) with lowest average performance: "
+
+# REPEAT_UNTIL VERVANGEN DOOR REPEAT_WHILE....
+# gemiddelde op 2 decimalen: round(totalpoints*1.0/totalgames,2) AS avgpoints
+
+
+Table 0: Process all games and count team and player performances
+If:                                            | 0| 1|
+'Next Game to process?'                        | Y| N|
+Then:                                                 
+Eval_Game is Process_game                      | X|  |
+Eval_Game is Finished                          |  | X|  
+# .......
+# Repeat while: Eval_Game is Process_game
+
+
+Proposition: 'Next Game to process?'
+Obtain_instance_from_database_view: game
+
+
+Table 1: display one or more teams with most points
+If:                                            | 0| 1|
+best_performing_teams.number > 1               | Y| N|
+Then:                                              
+Eval_Team1 is Display_first_team               | X|  |
+Eval_Team1 is Display_one_team                 |  | X|
+# .......
+
+
+Table 2: display next teams with most points
+If:                                            | 0| 1|
+'Next Team with most points?'                  | Y| N|
+Then:                                              
+Eval_Team2 is Display_next_team                | X|  |
+Eval_Team2 is Finished                         |  | X|
+# .......
+# Repeat while: Eval_Team2 is Display_next_team
+
+
+Proposition: 'Next Team with most points?'
+Obtain_instance_from_database_view: best_performing_teams
+
+
+Table 3: display one or more players with highest average
+If:                                            | 0| 1|
+highest_rated_avg.number > 1                   | Y| N|
+Then:                                              
+Eval_High1 is Display_first_player             | X|  |
+Eval_High1 is Display_one_player               |  | X|
+# .......
+
+
+Table 4: display next players with highest average
+If:                                            | 0| 1|
+'Next Player with highest average?'            | Y| N|
+Then:                                              
+Eval_High2 is Display_next_player              | X|  |
+Eval_High2 is Finished                         |  | X|
+# .......
+# Repeat while: Eval_High2 is Display_next_player
+
+
+Proposition: 'Next Player with highest average?'
+Obtain_instance_from_database_view: highest_rated_players
+
+
+Table 5: display one or more players with lowest average
+If:                                            | 0| 1|
+lowest_rated_avg.number > 1                    | Y| N|
+Then:                                              
+Eval_Low1 is Display_first_player              | X|  |
+Eval_Low1 is Display_one_player                |  | X|
+# .......
+
+
+Table 6: display next players with lowest average
+If:                                            | 0| 1|
+'Next Player with lowest average?'             | Y| N|
+Then:                                              
+Eval_Low2 is Display_next_player               | X|  |
+Eval_Low2 is Finished                          |  | X|
+# .......
+# Repeat while: Eval_Low2 is Display_next_player
+
+
+Proposition: 'Next Player with lowest average?'
+Obtain_instance_from_database_view: lowest_rated_players
+
+
+Attribute: Efficiency  Type: Text
+Obtain_value_from_database_view: game.efficiency
+
+Attribute: points      Type: Integer
+Equals:  5 if Efficiency == "best"    \
+   else  3 if Efficiency == "better"  \ 
+   else  2 if Efficiency == "good"    \ 
+   else -2 if Efficiency == "bad"     \
+   else -5 if Efficiency == "worst"   \
+   else 99999
+
+
+########################### Database views ########################### 
+
+Database_view: game
+With_attributes:
+teamid, playerid, efficiency
+Query:
+SELECT teamid, playerid, efficiency
+  FROM game
+ LIMIT 1 OFFSET %s  
+With_arguments: game.auto_index   
+
+
+Database_view: best_performing_teams
+With_attributes:
+teamid, teamname, totalpoints, number
+Query:
+SELECT a.teamid, b.name, a.totalpoints, count(*) AS number 
+FROM sum_per_team AS a
+JOIN team AS b on (a.teamid = b.id)
+JOIN (SELECT count(distinct teamid)  
+           FROM sum_per_team
+           WHERE totalpoints = (SELECT max(totalpoints) FROM sum_per_team) GROUP BY teamid)
+WHERE a.totalpoints = (SELECT max(totalpoints) FROM sum_per_team)
+GROUP BY teamid
+LIMIT 1 OFFSET %s  
+With_arguments: best_performing_teams.auto_index   
+
+
+
+Database_view: highest_rated_avg
+With_attributes:
+number
+Query:
+SELECT count(distinct playerid) AS number 
+FROM sum_per_player
+WHERE totalpoints*1.0/totalgames = (SELECT max(totalpoints*1.0/totalgames) FROM sum_per_player)
+End_Query 
+
+Database_view: lowest_rated_avg
+With_attributes:
+number
+Query:
+SELECT count(distinct playerid) AS number  
+FROM sum_per_player
+WHERE totalpoints*1.0/totalgames = (SELECT min(totalpoints*1.0/totalgames) FROM sum_per_player)
+End_Query
+
+
+Database_view: highest_rated_players
+With_attributes:
+playerid, playername, teamname, totalpoints, totalgames, avgpoints
+Query:
+SELECT a.playerid, b.name AS playername, c.name AS teamname, 
+       a.totalpoints, 
+       a.totalgames, 
+       round(totalpoints*1.0/totalgames, 2) AS avgpoints
+FROM sum_per_player AS a
+JOIN player AS b on (a.playerid = b.id)
+JOIN (SELECT playerid, name  
+       FROM game 
+       JOIN team 
+       WHERE game.teamid = team.id) AS c
+       on a.playerid = c.playerid
+WHERE totalpoints*1.0/totalgames = (SELECT max(totalpoints*1.0/totalgames) FROM sum_per_player)
+GROUP BY a.playerid
+LIMIT 1 OFFSET %s  
+With_arguments: highest_rated_players.auto_index
+
+
+Database_view: lowest_rated_players
+With_attributes:
+playerid, playername, teamname, totalpoints, totalgames, avgpoints
+Query:
+SELECT a.playerid, b.name AS playername, c.name AS teamname, 
+       a.totalpoints, 
+       a.totalgames, 
+       round(totalpoints*1.0/totalgames, 2) AS avgpoints
+FROM sum_per_player AS a
+JOIN player AS b on (a.playerid = b.id)
+JOIN (SELECT playerid, name  
+       FROM game 
+       JOIN team 
+       WHERE game.teamid = team.id) AS c
+       on a.playerid = c.playerid
+WHERE totalpoints*1.0/totalgames = (SELECT min(totalpoints*1.0/totalgames) FROM sum_per_player)
+GROUP BY a.playerid
+LIMIT 1 OFFSET %s  
+With_arguments: lowest_rated_players.auto_index
+
+
+
+########################### GoalAttributes ########################### 
+
+GoalAttribute: Eval_Game
+Repeat_while: Process_game
+
+Case: Process_game
+Print: "Efficiency for player %s is %s so add %s points for team with id: %s " game.playerid  game.efficiency  points  game.teamid      
+>SQL:  "UPDATE sum_per_team " 
+-SQL:  "   SET totalpoints = totalpoints + %s "       points
+<SQL:  " WHERE teamid = %s "                          game.teamid
+>SQL:  "UPDATE sum_per_player " 
+-SQL:  "   SET totalgames = totalgames + 1,   "       
+-SQL:  "       totalpoints = totalpoints + %s "       points
+<SQL:  " WHERE playerid = %s "                        game.playerid
+
+Case: Finished
+Print: "    "
+
+
+
+# DISPLAY ONE OR FIRST TEAM WITH MOST POINTS
+GoalAttribute: Eval_Team1
+
+Case: Display_first_team
+Print: "Teams with most points (%s):"                      best_performing_teams.totalpoints 
+Print: "- %s "                                             best_performing_teams.teamname 
+
+Case: Display_one_team
+Print: "Winner is team %s with %s points!"                 best_performing_teams.teamname  best_performing_teams.totalpoints
+Print: "        " 
+
+# DISPLAY NEXT TEAMS WITH MOST POINTS
+GoalAttribute: Eval_Team2
+Repeat_while: Display_next_team 
+
+Case: Display_next_team
+Print: "- %s "                                             best_performing_teams.teamname 
+
+Case: Finished
+Print: "      "
+
+
+# DISPLAY ONE OR FIRST PLAYER WITH HIGHEST AVERAGE
+GoalAttribute: Eval_High1
+
+Case: Display_first_player
+Print: "Players with highest average (%s):"                highest_rated_players.avgpoints 
+Print: "- %s (team: %s)"                                   highest_rated_players.playername highest_rated_players.teamname 
+
+Case: Display_one_player
+Print: "Player with highest average (%s): %s  (team: %s) " highest_rated_players.avgpoints  highest_rated_players.playername highest_rated_players.teamname 
+Print: "        " 
+
+# DISPLAY NEXT PLAYERS WITH HIGHEST AVERAGE
+GoalAttribute: Eval_High2
+Repeat_while: Display_next_player 
+
+Case: Display_next_player
+Print: "- %s (team: %s)"                                   highest_rated_players.playername highest_rated_players.teamname
+
+Case: Finished
+Print: "      "
+
+# DISPLAY ONE OR FIRST PLAYER WITH LOWEST AVERAGE
+GoalAttribute: Eval_Low1
+
+Case: Display_first_player
+Print: "Players with lowest average (%s):"                 lowest_rated_players.avgpoints 
+Print: "- %s (team: %s)"                                   lowest_rated_players.playername lowest_rated_players.teamname 
+
+Case: Display_one_player
+Print: "Player with lowest average (%s): %s  (team: %s) "  lowest_rated_players.avgpoints  lowest_rated_players.playername lowest_rated_players.teamname 
+Print: "        " 
+
+
+# DISPLAY NEXT PLAYERS WITH LOWEST AVERAGE
+GoalAttribute: Eval_Low2
+Repeat_while: Display_next_player 
+
+Case: Display_next_player
+Print: "- %s (team: %s)"                                   lowest_rated_players.playername lowest_rated_players.teamname
+
+Case: Finished
+Print: "      "
+
+
+Initial_database_setup: make_start_summation_per_team
+Query:
+    UPDATE sum_per_team SET totalpoints = 0
+End_Query
+
+Initial_database_setup: make_start_summation_per_player
+Query:
+    UPDATE sum_per_player SET totalgames = 0, totalpoints = 0
+End_Query
+
+
+
+
+
+
+
+

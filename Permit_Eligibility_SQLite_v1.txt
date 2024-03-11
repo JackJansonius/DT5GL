@@ -1,0 +1,192 @@
+
+
+SQLite_database: "Database/Applicant.sqlite"
+
+
+# An applicant is eligible for a resident permit if the applicant has lived at an address while married 
+# and in that time period, they have shared the same address at least 7 of the last 10 years. 
+# But here it's not years or days but months that are counted:
+# 7 of the last 10 years = 84 of the last 120 months
+
+# YearMonthEndCheck = 202303, so reference months are from March 2013 to February 2023 (= exactly 10 years). 
+# Reference day = the 15th of the month. 
+
+
+Attribute: YearMonthEndCheck      Type: Integer
+Equals: 202303
+Attribute: NumberYearsInspected   Type: Integer      
+Equals: 10
+
+Table 0:
+If:                                            | 0| 1|
+'Next applicant present'                       | Y| N|     
+Then:                                   
+NextApplicant is Selected                      | X|  |
+NextApplicant is NotSelected                   |  | X|
+# .......
+# Repeat until: NotSelected
+
+Proposition: 'Next applicant present'
+Obtain_instance_from_database_view: applicant
+
+Table 1: 
+If:                                            | 0| 1| 2| 
+Next year in [firstYear-lastYear]              | Y| N| N|
+month_ok >= 84                                 | -| Y| N|
+Then:                                  
+EvalYear is Selected                           | X|  |  |
+EvalYear is Finished_ok                        |  | X|  |
+EvalYear is Finished_nok                       |  |  | X|
+# .......
+# Repeat until: Finished_ok, Finished_nok
+
+Table 2: 
+If:                                            | 0| 1| 2| 3| 
+Next month in [firstMonth-lastMonth]           | Y| Y| Y| N|
+'Applicant is married on reference date'       | Y| Y| N| -|
+applicant_address.id = spouse_address.id       | Y| N| -| -|
+Then:                                     
+EvalMonth is Eligible                          | X|  |  |  |
+EvalMonth is NotEligible_1                     |  | X|  |  |
+EvalMonth is NotEligible_2                     |  |  | X|  |
+EvalMonth is Finished                          |  |  |  | X|
+# .......
+# Repeat until: Finished
+
+
+Proposition: 'Applicant is married on reference date'
+Obtain_instance_from_database_view: married
+
+
+# Determine range of years to be checked: [firstYear-lastYear]
+Attribute: lastYear                  Type: Integer
+Equals: int(YearMonthEndCheck/100)
+
+Attribute: firstYear                 Type: Integer
+Equals: lastYear - NumberYearsInspected
+
+# Determine range of months to be checked within selected year: [firstMonth-lastMonth] 
+Attribute: checkMonth                Type: Integer
+Equals: YearMonthEndCheck % 100
+
+Attribute: firstMonth                Type: Integer
+Equals: checkMonth if year == firstYear else 1
+
+Attribute: lastMonth                 Type: Integer
+Equals: checkMonth - 1 if year == lastYear  else 12 
+
+Attribute: refdate                   Type: Text
+Equals: str(year) + "-" + zerofill(month,2) + "-15"
+
+Attribute: applicant_address.id      Type: Integer
+Attribute: spouse_address.id         Type: Integer
+
+########################### Database views ###########################
+
+Database_view: applicant
+With_attributes: id, name
+Query:
+ SELECT id, name
+  FROM person
+ WHERE type = "A"
+ LIMIT 1 OFFSET %s
+With_arguments: applicant.auto_index
+
+
+Database_view: married
+With_attributes: applicant_id, spouse_id, from, to
+Query:
+SELECT applicant_id, spouse_id, date_from, date_to
+  FROM married
+ WHERE applicant_id = %s   
+   AND date_from <= '%s'      
+   AND (date_to IS NULL OR date_to >= '%s' )    
+With_arguments: applicant.id, refdate, refdate 
+
+
+Database_view: applicant_address
+With_attributes: id
+Query:
+  SELECT 
+  COALESCE((SELECT addressid 
+            FROM person_address 
+            WHERE personid = %s 
+              AND date_from <= '%s' 
+              AND (date_to IS NULL OR date_to >= '%s' )), 
+           -1) AS addressid
+With_arguments: applicant.id, refdate, refdate 
+# Retrieves the addressid for the applicant on the reference day 
+# and returns -1 if no address is found.
+
+
+Database_view: spouse_address
+With_attributes: id
+Query:
+  SELECT 
+  COALESCE((SELECT addressid 
+            FROM person_address 
+            WHERE personid = %s 
+              AND date_from <= '%s' 
+              AND (date_to IS NULL OR date_to >= '%s' )), 
+           -2) AS addressid
+With_arguments: married.spouse_id, refdate, refdate 
+# Retrieves the addressid for the spouse on the reference day 
+# and returns -2 if no address is found.
+
+########################### GoalAttributes ###########################
+
+GoalAttribute: NextApplicant
+Repeat_until:  NotSelected
+
+Case: NotSelected
+Print: "End!"
+
+Case: Selected 
+Print: "#REM# -  " 
+>>: month_ok = 0                 # Counter months ok, because married and living at the same address.
+>>: nok_married = 0              # Counter months not ok because not married.
+>>: nok_address = 0              # Counter months not ok because married but not living at the same address. 
+         
+
+
+GoalAttribute: EvalYear
+Repeat_until:  Finished_ok, Finished_nok
+
+Case: Finished_ok  
+Print: "Applicant %s (%s) is ELIGIBLE for a resident permit."     applicant.name applicant.id
+Print: "Number of months married and same address.....:  %s "     month_ok
+Print: "       (=> sufficient for minimum of 84 months)"
+Print: "Number of months married; not the same address:  %s"      nok_address
+Print: "Number of months not married..................:  %s"      nok_married
+Print: "---------------------------------------------------------------------------" 
+
+Case: Finished_nok  
+Print: "Applicant %s (%s) is NOT eligible for a resident permit." applicant.name applicant.id
+Print: "Number of months married and same address.....:  %s "     month_ok
+Print: "   (=> not sufficient for minimum of 84 months)"
+Print: "Number of months married; not the same address:  %s"      nok_address 
+Print: "Number of months not married..................:  %s"      nok_married
+Print: "---------------------------------------------------------------------------"
+
+Case: Selected
+Print: "#REM# -  " 
+   
+
+GoalAttribute: EvalMonth
+Repeat_until: Finished
+
+Case: Finished
+Print: "#REM# -  "
+
+Case: Eligible 
+>>: month_ok = month_ok + 1 
+
+Case: NotEligible_1
+>>: nok_address = nok_address + 1
+
+Case: NotEligible_2
+>>: nok_married = nok_married + 1
+
+
+
+

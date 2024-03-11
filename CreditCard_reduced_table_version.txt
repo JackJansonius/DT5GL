@@ -1,0 +1,218 @@
+
+
+Note: 
+Wherever possible in this solution, the complete decision tables have been replaced by reduced tables. 
+This makes no difference in terms of operation. 
+
+
+Decision overview:
+Credit card application
+    Applicant_Demographic_Suitability   
+        Applicant_Years_of_Age
+        Applicant_Card_Type
+        'Applicant is existing customer'
+            Product_holdings_number
+        Student_Creditcard_Suitability
+            Current_account_Type
+        Private_Creditcard_Suitability
+            Sole_Annual_Income
+            Outstanding_Mortgage
+            Saving_and_Investment_balance 
+
+    Applicant_Creditcard_Eligibility
+        Applicant_Card_Type
+        Applicant_Credit_Score 
+            Score_on_payments
+                Number_of_payments
+            Score_on_bankruptcy
+                'Applicant has declared bankruptcy'
+            Score_on_current_account_bank_years
+                current_account_bank_years
+            Score_on_available_credit_used_pct
+                Amount_of_available_credit_used_pct
+        Applicant_Balance_Transfer_CreditCard
+            Sole_Annual_Income                     
+            Residential_Status              
+            'CreditCard previously applied in last 6 month'
+            Number_of_years_address_history           
+
+            
+
+
+
+
+Table 0: credit card application
+If:                                                    | 0| 1| 2|
+Applicant_Demographic_Suitability is Suitable          | Y| Y| N| 
+Applicant_Creditcard_Eligibility is Eligible           | Y| N| -|
+Then:                                                  
+Credit_Card is Accepted                                | X|  |  |
+Credit_Card is Rejected                                |  | X| X|
+# .......
+
+GoalAttribute: Credit_Card
+Case: Accepted                    
+Print: "Credit card is accepted"
+Case: Rejected                    
+Print: "Credit card is rejected"
+
+
+rTable 1: Applicant Demographic Suitability
+If:                                                    | 0| 1| 2|
+Applicant_Years_of_Age < 18                            | N| N| N|
+Applicant_Card_Type is Student                         | Y| N| N|
+Applicant_Card_Type is Private                         | -| Y| N|
+Applicant_Card_Type is Balance-Transfer                | -| -| Y|
+'Applicant is existing customer'                       | Y| Y| -|
+Student_Creditcard_Suitability is Suitable             | Y| -| -|
+Private_Creditcard_Suitability is Suitable             | -| Y| -|
+Then:
+Applicant_Demographic_Suitability is Suitable          | X| X| X|
+# ....... 
+
+
+
+Attribute: Applicant_Years_of_Age
+Askable_using: "What is the years of age of the applicant?"
+Attribute: Applicant_Card_Type
+Askable_using: "What is the desired cardtype?"
+
+
+rTable 2: Existing customer?
+If:                                                    | 0|
+Product_holdings_number > 0                            | Y|
+Then:                                                  
+'Applicant is existing customer'                       | X|
+# .......
+ 
+Attribute: Product_holdings_number
+Askable_using: "What is the number of products held?" 
+ 
+ 
+
+rTable 3: Student Creditcard Suitability
+If:                                                    | 0|
+Current_account_Type is Student                        | Y|
+Then:
+Student_Creditcard_Suitability is Suitable             | X|
+# .......
+
+Attribute: Current_account_Type
+Askable_using: "What is the current account type?" 
+
+
+rTable 4: Private Creditcard Suitability
+If:                                                    | 0| 1| 2|
+Sole_Annual_Income   < 100000                          | Y| Y| N|
+Outstanding_Mortgage < 300000                          | Y| N| -|
+Saving_and_Investment_balance < 100000                 | N| -| -|
+Then:
+Private_Creditcard_Suitability is Suitable             | X| X| X|
+# .......
+
+Attribute: Sole_Annual_Income
+Askable_using: "What is the sole anual income (>=100000 expected)"
+Attribute: Outstanding_Mortgage
+Askable_using: "What is the outstanding mortgage (>=300000 expected)" 
+Attribute: Saving_and_Investment_balance
+Askable_using: "What is the saving and investment balance (>=100000 expected)"
+
+
+
+rTable 5: Applicant Creditcard Eligibility
+If:                                                    | 0| 1| 2|
+Applicant_Card_Type is Student                         | Y| N| N|
+Applicant_Card_Type is Private                         | -| Y| N|
+Applicant_Card_Type is Balance-Transfer                | -| -| Y|
+Applicant_Credit_Score >= 500                          | Y| -| -|
+Applicant_Credit_Score >= 750                          | -| Y| Y|
+Applicant_Balance_Transfer_CreditCard is Eligible      | -| -| Y|
+Then:
+Applicant_Creditcard_Eligibility is Eligible           | X| X| X|
+# .......
+
+rTable 6: Applicant Balance Transfer CreditCard
+If:                                                    | 0|
+Sole_Annual_Income > 10000                             | Y|
+Residential_Status is UK_resident                      | Y|
+'CreditCard previously applied in last 6 month'        | N|
+Number_of_years_address_history >= 3                   | Y|
+Then:
+Applicant_Balance_Transfer_CreditCard is Eligible      | X|
+# ....... 
+
+Proposition: 'CreditCard previously applied in last 6 month'
+Askable_using: "**?"
+Attribute: Residential_Status
+Askable_using: "What is the residential status of the applicant?"
+Attribute: Number_of_years_address_history
+Askable_using: "What is the number of years with a adress history (3 or more expected)?" 
+
+Attribute: Applicant_Credit_Score
+Summation_of: Score_on_payments + Score_on_bankruptcy + Score_on_current_account_bank_years + Score_on_available_credit_used_pct
+
+
+Table 7: Score on payments
+If:                                                    | 0| 1| 2| 3|
+Number_of_payments  = 0                                | Y| N| N| N|
+Number_of_payments <= 3                                | -| Y| N| N|
+Number_of_payments <= 6                                | -| -| Y| N|
+Then:
+Score_on_payments = 250                                | X|  |  |  |  
+Score_on_payments = 100                                |  | X|  |  |
+Score_on_payments = 50                                 |  |  | X|  |
+Score_on_payments = 0                                  |  |  |  | X|
+# .......
+
+Attribute: Number_of_payments
+Askable_using: "What is the number of default payments in the last 12 months (0,..3,..6,..)?"
+
+
+Table 8: Score on bankruptcy
+If:                                                    | 0| 1|
+'Applicant has declared bankruptcy'                    | Y| N|
+Then:
+Score_on_bankruptcy = 0                                | X|  |
+Score_on_bankruptcy = 250                              |  | X|
+# .......
+
+Proposition: 'Applicant has declared bankruptcy'  
+Askable_using: "**?"
+
+Table 9: Score on current account bank years
+If:                                                    | 0| 1| 2|
+current_account_bank_years = 0                         | Y| N| N|
+current_account_bank_years <= 3                        | -| Y| N|
+Then:
+Score_on_current_account_bank_years = 50               | X|  |  |
+Score_on_current_account_bank_years = 150              |  | X|  |
+Score_on_current_account_bank_years = 250              |  |  | X|
+# .......
+
+Attribute: current_account_bank_years
+Askable_using: "Years with current account bank (0,..3,..)?"
+
+
+Table 10: Score on available credit used percentage
+If:                                                    | 0| 1| 2| 3|
+Amount_of_available_credit_used_pct < 25               | Y| N| N| N|
+Amount_of_available_credit_used_pct < 50               | -| Y| N| N|
+Amount_of_available_credit_used_pct < 75               | -| -| Y| N|
+Then:                                                  
+Score_on_available_credit_used_pct = 200               | X|  |  |  |
+Score_on_available_credit_used_pct = 249               |  | X|  |  |
+Score_on_available_credit_used_pct = 150               |  |  | X|  |
+Score_on_available_credit_used_pct = 0                 |  |  |  | X|
+# .......
+
+Attribute: Amount_of_available_credit_used_pct
+Askable_using: "Amount of available credit used percentage (0..24,..49,..74,..100)?"
+
+
+
+
+
+
+
+
+

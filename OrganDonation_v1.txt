@@ -1,0 +1,187 @@
+
+
+
+
+Organ-states:
+I-Available   = Available for individual patients.
+I-Offered     = Offered to an individual patient.
+I-Accepted    = Accepted by an individual patient; DUOBLOCK becomes false after accepting.
+TC-Wait       = Fallback
+TC-Available  = Available for transplant centers.
+TC-Offered    = Offered to a transplant center.
+TC-Accepted   = Accepted by a transplant center.
+NotAccepted   = Not accepted by an individual or transplant center.
+NotAvailable  = Not available
+
+
+Table 0: Assign the heart to an individual patient or a transplant center.
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|10|
+'DUOBLOCK/Fallback is (still) possible'          | Y| Y| Y| Y| N| N| N| N| N| -| -| 
+H_Stat_inp is NotAvailable                       | -| -| -| -| Y| N| N| N| N| -| -|
+H_Stat_inp is TC-Wait                            | Y| N| N| N| -| Y| N| N| N| -| -|
+H_Stat_inp is I-Available                        | -| Y| Y| N| -| -| Y| Y| N| -| -|
+'Another patient on Heart Prio List'             | -| Y| N| -| -| -| Y| N| -| -| -|
+H_Stat_inp is TC-Available                       | -| -| -| -| -| -| -| -| -| Y| N|
+Then:                                                                           
+H_Stat is I-Offered                              |  | X|  |  |  |  | X|  |  |  |  |
+H_Stat is TC-Wait                                |  |  | X|  |  |  |  |  |  |  |  |
+H_Stat is TC-Available                           |  |  |  |  |  | X|  | X|  | X|  |
+# .......
+
+Attribute: H_Stat_inp
+Askable_using: "What is the Status of the offered Heart in the block?"
+Proposition: 'Another patient on Heart Prio List'
+Askable_using: "Is there Another patient on the Heart Prio List?"
+# Proposition: 'DUOBLOCK'  / Could, on closer inspection, be derived from other variables.
+# Askable_using: "Fallback scenario?"  / See table 2.   
+
+
+Table 1: assign the lungs to an individual patient or a transplant center
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|10|
+'DUOBLOCK/Fallback is (still) possible'          | Y| Y| Y| Y| N| N| N| N| N| -| -| 
+L_Stat_inp is NotAvailable                       | -| -| -| -| Y| N| N| N| N| -| -|
+L_Stat_inp is TC-Wait                            | Y| N| N| N| -| Y| N| N| N| -| -|
+L_Stat_inp is I-Available                        | -| Y| Y| N| -| -| Y| Y| N| -| -|
+'Another patient on Lung Prio List'              | -| Y| N| -| -| -| Y| N| -| -| -|
+L_Stat_inp is TC-Available                       | -| -| -| -| -| -| -| -| -| Y| N|
+Then:                                                                           
+L_Stat is I-Offered                              |  | X|  |  |  |  | X|  |  |  |  |
+L_Stat is TC-Wait                                |  |  | X|  |  |  |  |  |  |  |  |
+L_Stat is TC-Available                           |  |  |  |  |  | X|  | X|  | X|  |
+# .......
+
+Attribute: L_Stat_inp
+Askable_using: "What is the Status of the offered Lungs in the block?"
+Proposition: 'Another patient on Lung Prio List'
+Askable_using: "Is there Another patient on the Lung Prio List?"
+
+
+rTable 2: DUOBLOCK/fallback policy still applies.
+If:                                              | 0| 
+H_Stat_inp is NotAvailable                       | N| 
+H_Stat_inp is I-Accepted                         | N| 
+L_Stat_inp is NotAvailable                       | N| 
+L_Stat_inp is I-Accepted                         | N| 
+Then:                                                       
+'DUOBLOCK/Fallback is (still) possible'          | X| 
+# .......
+
+# The Duoblock proposition indicates whether a fallback scenario is possible. 
+# DUOBLOCK is false when a Heart-Lung-block contains 1 organ only; the other organ has status NotAvailable. 
+# DUOBLOCK becomes false when one of the organs is accepted by an individual patient. 
+# DUOBLOCK is true as long as both organs are offered to individual patients.
+
+
+rTable 3: Assign a heart-lung block to a transplant center for the first time (fallback-scenario)
+If:                                              | 0| 1| 2|
+H_Stat is TC-Wait                                | Y| Y| N|
+L_Stat is TC-Wait                                | Y| -| Y|
+H_Stat_inp is TC-Wait                            | -| -| Y|
+L_Stat_inp is TC-Wait                            | -| Y| -|
+Then:                                                         
+'Heart-Lung Block to TC for the first time'      | X| X| X|
+# .......
+
+Proposition: 'Another Transplant Center on TC list'
+Askable_using: "Is there Another TC on the Transplant Center Prio List?"
+
+
+Table 4: Assign heart and/or lungs to a next transplantation center.
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8|
+'Heart-Lung Block to TC for the first time'      | Y| Y| N| N| N| N| N| N| N|  
+H_Stat is TC-Available                           | -| -| Y| Y| Y| Y| N| N| N|
+L_Stat is TC-Available                           | -| -| Y| Y| N| N| Y| Y| N|
+'Another Transplant Center on TC list'           | Y| N| Y| N| Y| N| Y| N| -|
+Then:                                                
+Action is HL->TC                                 | X|  | X|  |  |  |  |  |  | 
+Action is NotAccepted                            |  | X|  | X|  | X|  | X|  |   
+Action is H->TC                                  |  |  |  |  | X|  |  |  |  |
+Action is L->TC                                  |  |  |  |  |  |  | X|  |  |
+# .......
+
+
+Table 5: Assign heart and/or lungs to next patient.
+If:                                              | 0| 1| 2| 3|
+H_Stat is I-Offered                              | Y| Y| N| N|
+L_Stat is I-Offered                              | Y| N| Y| N|
+Then:                                                    
+Action is H->I;L->I                              | X|  |  |  |
+Action is H->I                                   |  | X|  |  |
+Action is L->I                                   |  |  | X|  |
+# .......
+
+
+Table 6: Only the heart or the lungs come into a wait state (fallback scenario)
+If:                                              | 0| 1| 2|
+H_Stat is TC-Wait                                | Y| N| N|
+L_Stat is TC-Wait                                | -| Y| N|
+Then:                                                            
+Action is H->TC-Wait                             | X|  |  |
+Action is L->TC-Wait                             |  | X|  |
+# .......
+
+
+
+GoalAttribute: Action
+
+Case: NotAccepted
+Print: "============================Result============================"
+Print: "Not Accepted by any patient or TC"
+Print: "=============================================================="
+
+Case: HL->TC
+Print: "============================Result============================"
+Print: "HL->TC"
+Print: "Assign a heart and lung-block to the next transplant center"
+Print: "Status of the heart: TC-Offered." 
+Print: "Status of the lungs: TC-Offered." 
+Print: "=============================================================="
+
+Case: H->TC
+Print: "============================Result============================"
+Print: "H->TC"
+Print: "Assign the heart to a next transplant center"
+Print: "Status of the heart: TC-Offered." 
+Print: "=============================================================="
+
+Case: L->TC
+Print: "============================Result============================"
+Print: "L->TC"
+Print: "Assign the lungs to a next transplant center"
+Print: "Status of the lungs: TC-Offered." 
+Print: "=============================================================="
+
+Case: H->TC-Wait
+Print: "============================Result============================"
+Print: "H->TC-Wait"
+Print: "The heart is waiting now for a block-offer to a transplant center,"
+Print: "while the lungs are still offered to individual patients on the prio list."
+Print: "=============================================================="
+Case: L->TC-Wait
+Print: "============================Result============================"
+Print: "L->TC-Wait"
+Print: "The lungs are waiting now for a block-offer to a transplant center,"
+Print: "while the heart is still offered to individual patients on the prio list."
+Print: "=============================================================="
+
+Case: H->I;L->I
+Print: "============================Result============================"
+Print: "H->I;L->I"
+Print: "Assign heart and lungs to the following patients on the prio lists"
+Print: "Status of the heart: %s." H_Stat
+Print: "Status of the lungs: %s." L_Stat
+Print: "=============================================================="
+Case: H->I
+Print: "============================Result============================"
+Print: "H->I"
+Print: "Assign the heart to the following patient on the prio list"
+Print: "Status of the heart: %s." H_Stat
+Print: "=============================================================="
+Case: L->I
+Print: "============================Result============================"
+Print: "L->I"
+Print: "Assign the lungs to the following patient on the prio list"
+Print: "Status of the lungs: %s." L_Stat
+Print: "=============================================================="
+
+

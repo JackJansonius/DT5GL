@@ -1,0 +1,524 @@
+
+
+
+Organ-states:
+1. I-Available   = Available for individual patients.
+2. I-Offered     = Offered to an individual patient.
+3. I-Accepted    = Accepted by an individual patient; DUOBLOCK becomes false after accepting.
+4. TC-Wait       = Fallback
+5. TC-Available  = Available for transplant centers.
+6. TC-Offered    = Offered to a transplant center.
+7. TC-Accepted   = Accepted by a transplant center.
+8. NotAccepted   = Not accepted by an individual or transplant center.
+9. NotAvailable  = Not available
+
+<Multi-valued goalattribute>
+
+
+SQLite_database: "Database/organdonation.sqlite"
+
+Table 0: Assign the heart to an individual patient or a transplant center.
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|10|
+'DUOBLOCK/Fallback is (still) possible'          | Y| Y| Y| Y| N| N| N| N| N| -| -| 
+H_Stat_inp is NotAvailable                       | -| -| -| -| Y| N| N| N| N| -| -|
+H_Stat_inp is TC-Wait                            | Y| N| N| N| -| Y| N| N| N| -| -|
+H_Stat_inp is I-Available                        | -| Y| Y| N| -| -| Y| Y| N| -| -|
+'Another patient on Heart Prio List'             | -| Y| N| -| -| -| Y| N| -| -| -|
+H_Stat_inp is TC-Available                       | -| -| -| -| -| -| -| -| -| Y| N|
+Then:                                                                           
+H_Stat is I-Offered                              |  | X|  |  |  |  | X|  |  |  |  |
+H_Stat is TC-Wait                                |  |  | X|  |  |  |  |  |  |  |  |
+H_Stat is TC-Available                           |  |  |  |  |  | X|  | X|  | X|  |
+# .......
+
+Attribute: H_Stat_inp
+Obtain_value_from_database_view: organ_block.heart_status
+
+Proposition: 'Another patient on Heart Prio List'
+Obtain_instance_from_database_view: high_prio_heart_list
+
+
+Table 1: assign the lungs to an individual patient or a transplant center
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|10|
+'DUOBLOCK/Fallback is (still) possible'          | Y| Y| Y| Y| N| N| N| N| N| -| -| 
+L_Stat_inp is NotAvailable                       | -| -| -| -| Y| N| N| N| N| -| -|
+L_Stat_inp is TC-Wait                            | Y| N| N| N| -| Y| N| N| N| -| -|
+L_Stat_inp is I-Available                        | -| Y| Y| N| -| -| Y| Y| N| -| -|
+'Another patient on Lung Prio List'              | -| Y| N| -| -| -| Y| N| -| -| -|
+L_Stat_inp is TC-Available                       | -| -| -| -| -| -| -| -| -| Y| N|
+Then:                                                                           
+L_Stat is I-Offered                              |  | X|  |  |  |  | X|  |  |  |  |
+L_Stat is TC-Wait                                |  |  | X|  |  |  |  |  |  |  |  |
+L_Stat is TC-Available                           |  |  |  |  |  | X|  | X|  | X|  |
+# .......
+
+
+Proposition: 'Still organs to offer'
+Obtain_instance_from_database_view: organ_block
+
+Attribute: L_Stat_inp
+Obtain_value_from_database_view: organ_block.lung_status
+
+Proposition: 'Another patient on Lung Prio List'
+Obtain_instance_from_database_view: high_prio_lung_list
+
+
+rTable 2: DUOBLOCK/fallback policy still applies.
+If:                                              | 0| 1|
+'Still organs to offer'                          | Y| N|
+H_Stat_inp is NotAvailable                       | N| -|
+H_Stat_inp is I-Accepted                         | N| -|
+L_Stat_inp is NotAvailable                       | N| -|
+L_Stat_inp is I-Accepted                         | N| -|
+Then:                                                       
+'DUOBLOCK/Fallback is (still) possible'          | X|  |
+Action is No_Organs_To_Offer                     |  | X|
+# .......
+
+# The Duoblock proposition indicates whether a fallback scenario is possible. 
+# DUOBLOCK is false when a Heart-Lung-block contains 1 organ only; the other organ has status NotAvailable. 
+# DUOBLOCK becomes false when one of the organs is accepted by an individual patient. 
+# DUOBLOCK is true as long as both organs are offered to individual patients.
+
+
+rTable 3: Assign a heart-lung block to a transplant center for the first time (fallback-scenario)
+If:                                              | 0| 1| 2|
+H_Stat is TC-Wait                                | Y| Y| N|
+L_Stat is TC-Wait                                | Y| -| Y|
+H_Stat_inp is TC-Wait                            | -| -| Y|
+L_Stat_inp is TC-Wait                            | -| Y| -|
+Then:                                                         
+'Heart-Lung Block to TC for the first time'      | X| X| X|
+# .......
+
+Proposition: 'Another Transplant Center on TC list'
+Obtain_instance_from_database_view: transplant_center
+
+
+Table 4: Assign heart and/or lungs to a next transplantation center.
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8|
+'Heart-Lung Block to TC for the first time'      | Y| Y| N| N| N| N| N| N| N|  
+H_Stat is TC-Available                           | -| -| Y| Y| Y| Y| N| N| N|
+L_Stat is TC-Available                           | -| -| Y| Y| N| N| Y| Y| N|
+'Another Transplant Center on TC list'           | Y| N| Y| N| Y| N| Y| N| -|
+Then:                                                
+Action is HL->TC                                 | X|  | X|  |  |  |  |  |  | 
+Action is HL_NotAccepted                         |  | X|  | X|  |  |  |  |  |
+Action is H_NotAccepted                          |  |  |  |  |  | X|  |  |  |
+Action is L_NotAccepted                          |  |  |  |  |  |  |  | X|  |
+Action is H->TC                                  |  |  |  |  | X|  |  |  |  |
+Action is L->TC                                  |  |  |  |  |  |  | X|  |  |
+# .......
+
+
+Table 5: Assign heart and/or lungs to next patient.
+If:                                              | 0| 1| 2| 3|
+H_Stat is I-Offered                              | Y| Y| N| N|
+L_Stat is I-Offered                              | Y| N| Y| N|
+Then:
+Action is H->I                                   | X| X|  |  |
+Action is L->I                                   | X|  | X|  |
+# .......
+
+
+
+Table 6: Only the heart or the lungs come into a wait state (fallback scenario)
+If:                                              | 0| 1| 2| 3| 4|
+'Heart-Lung Block to TC for the first time'      | Y| N| N| N| N|
+H_Stat is TC-Wait                                | -| Y| Y| N| N|
+L_Stat is TC-Wait                                | -| Y| N| Y| N|
+Then:
+Action is H->TC-Wait                             |  |  | X|  |  |
+Action is L->TC-Wait                             |  |  |  | X|  |
+# .......
+
+
+################################# Database views #################################
+Database_view: organ_block
+With_attributes:
+organ_block_id,donorid,name,heart_status,lung_status,organ_availability_date
+Query:
+SELECT a.organ_block_id,
+       b.donorid,
+       b.name,
+       c.status AS heart_status,
+       d.status AS lung_status,
+       a.organ_availability_date
+  FROM organ_block AS a
+       INNER JOIN
+       donor AS b ON (a.donorid = b.donorid)
+       INNER JOIN
+       organstatus AS c ON (a.h_stat = c.statusid)
+       INNER JOIN
+       organstatus AS d ON (a.l_stat = d.statusid)
+ WHERE c.status IN ("I-Available", "TC-Available") OR
+       d.status IN ("I-Available", "TC-Available")
+ ORDER BY organ_availability_date
+ LIMIT 1
+End_Query
+
+
+Database_view: high_prio_heart_list
+With_attributes:
+high_prio_heart_listid, patient_id, placement_date, priority, availability_id
+Query:
+SELECT *
+  FROM high_prio_heart_list
+ WHERE availability_id = 1
+ ORDER BY priority DESC,
+          placement_date ASC
+ LIMIT 1
+End_Query
+
+Database_view: high_prio_lung_list
+With_attributes: high_prio_lung_listid, patient_id, placement_date, priority, availability_id
+Query:
+SELECT *
+  FROM high_prio_lung_list
+ WHERE availability_id = 1
+ ORDER BY priority DESC,
+          placement_date ASC
+ LIMIT 1
+End_Query
+
+Database_view: transplant_center
+With_attributes: transplant_center_id, name, tc_availability_id
+Query:
+SELECT transplant_center_id,
+       name,
+       tc_availability_id
+  FROM transplant_center
+  WHERE  tc_availability_id = 1
+  LIMIT 1
+End_Query
+
+################################# GoalAttributes ################################# 
+GoalAttribute: Action
+Repeat_until: No_Organs_To_Offer
+MultiValued_until: No_Organs_To_Offer
+
+
+Case: No_Organs_To_Offer
+Print: "============================Result========================================="
+Print: "No organs with status 1 (I-Available) or status 5 (TC-Available) to offer. "
+Print: "The offering service has been finished"
+Print: "==========================================================================="
+
+
+
+Case: H->I
+Print: "============================Result=================================="
+Print: "H->I"
+Print: "Assign the heart to patient %s on the heart prio list" high_prio_heart_list.patient_id
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET h_stat = 2 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, patientid, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          high_prio_heart_list.patient_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE high_prio_heart_list SET availability_id = 2 "
+<SQL:  "WHERE patient_id = %s"   high_prio_heart_list.patient_id
+
+
+Case: L->I
+Print: "============================Result=================================="
+Print: "L->I"
+Print: "Assign the lungs to patient %s on the lung prio list" high_prio_lung_list.patient_id
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET l_stat = 2 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO lung_offer (organ_block_id, patientid, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          high_prio_lung_list.patient_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE high_prio_lung_list SET availability_id = 2 "
+<SQL:  "WHERE patient_id = %s"   high_prio_lung_list.patient_id
+
+
+Case: H->TC-Wait
+Print: "============================Result=================================="
+Print: "H->TC-Wait"
+Print: "The heart is waiting now for a block-offer to a transplant center."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET h_stat = 4 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: L->TC-Wait
+Print: "============================Result=================================="
+Print: "L->TC-Wait"
+Print: "The lungs are waiting now for a block-offer to a transplant center."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET l_stat = 4 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: HL->TC
+Print: "============================Result=================================="
+Print: "HL->TC"
+Print: "Assign a heart and lung-block to a next transplant center"
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "Status of the heart is now: 6. (TC-Offered)."
+Print: "Status of the lungs is now: 6. (TC-Offered)."
+Print: "Transplant center %s is temporarily unavailable for following organ offers" transplant_center.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET h_stat = 6, l_stat = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          transplant_center.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "INSERT INTO lung_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          transplant_center.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  transplant_center.transplant_center_id
+
+
+Case: H->TC
+Print: "============================Result=================================="
+Print: "H->TC"
+Print: "Assign the heart to a next transplant center"
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "Status of the heart is: 6. (TC-Offered)."
+Print: "Status of the lungs remains: %s."  organ_block.lung_status
+Print: "Transplant center %s is temporarily unavailable for following organ offers" transplant_center.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET h_stat = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          transplant_center.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  transplant_center.transplant_center_id
+
+
+Case: L->TC
+Print: "============================Result=================================="
+Print: "L->TC"
+Print: "Assign the lungs to a next transplant center"
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "Status of the lungs is now: 6. (TC-Offered)."
+Print: "Status of the heart remains: %s."  organ_block.heart_status
+Print: "Transplant center %s is temporarily unavailable for following organ offers" transplant_center.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET l_stat = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO lung_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          transplant_center.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  transplant_center.transplant_center_id
+
+
+Case: HL_NotAccepted
+Print: "============================Result=================================="
+Print: "Neither the heart nor the lungs have been accepted by patients or transplantation centres."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET h_stat = 8, l_stat = 8 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: H_NotAccepted
+Print: "============================Result=================================="
+Print: "The heart is not accepted by patients or transplantation centers."
+Print: "Status of the lungs remains: %s."  organ_block.lung_status
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET h_stat = 8 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: L_NotAccepted
+Print: "============================Result=================================="
+Print: "The lungs have not been accepted by patients or transplant centers."
+Print: "Status of the heart remains: %s."  organ_block.heart_status
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET l_stat = 8 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+################################# Database setups ################################# 
+Initial_database_setup: delete_organ_blocks
+Query:
+    DELETE FROM organ_block
+End_Query
+
+Initial_database_setup: insert_new_organ_blocks
+Query:
+    INSERT INTO organ_block (organ_availability_date, l_stat, h_stat, donorid, organ_block_id)
+    VALUES
+     ('2019-06-06', 1, 2, 7, 1),                    
+     ('2019-06-05', 1, 1, 6, 2),                    
+     ('2019-06-11', 1, 1, 5, 3),                    
+     ('2019-06-05', 2, 1, 1, 4),                    
+     ('2019-06-07', 1, 3, 3, 5),                    
+     ('2019-06-09', 1, 9, 4, 6),                    
+     ('2019-06-06', 3, 1, 2, 7),                    
+     ('2019-06-08', 1, 4, 10, 8),                    
+     ('2019-06-10', 1, 1, 9, 9),                    
+     ('2019-06-08', 9, 1, 19, 10),                    
+     ('2019-06-07', 4, 1, 8, 11),                    
+     ('2019-06-21', 1, 4, 21, 12),                    
+     ('2019-07-30', 4, 1, 11, 13),                    
+     ('2019-07-30', 5, 5, 12, 14),                    
+     ('2019-07-30', 9, 5, 13, 15),                    
+     ('2019-07-30', 5, 9, 14, 16),                    
+     ('2019-08-01', 7, 5, 15, 17),                    
+     ('2019-08-01', 5, 7, 16, 18),                    
+     ('2019-06-12', 1, 1, 17, 19),                    
+     ('2019-08-03', 1, 1, 20, 20),                    
+     ('2019-08-04', 3, 1, 22, 21),                    
+     ('2019-08-05', 5, 7, 23, 22)                    
+End_Query
+
+Initial_database_setup: delete_heart_offer
+Query:
+    DELETE FROM heart_offer 
+End_Query
+
+
+Initial_database_setup: delete_lung_offer
+Query:
+    DELETE FROM lung_offer
+End_Query
+
+
+Initial_database_setup: delete_high_prio_heart_list
+Query:
+    DELETE FROM high_prio_heart_list
+End_Query
+
+Initial_database_setup: insert_high_prio_heart_list
+Query:
+    INSERT INTO high_prio_heart_list
+    (availability_id, priority, placement_date, patient_id, high_prio_heart_listid)
+    VALUES
+    (2, 80, '2019-06-08', 1, 1), 
+    (2, 90, '2019-05-31', 2, 2), 
+    (1, 70, '2019-05-31', 3, 3), 
+    (2, 60, '2019-06-01', 4, 4), 
+    (1, 90, '2019-06-08', 5, 5), 
+    (2, 80, '2019-05-31', 6, 6), 
+    (2, 90, '2019-05-31', 7, 7), 
+    (1, 70, '2019-06-01', 8, 8), 
+    (2, 60, '2019-06-02', 15, 9), 
+    (2, 90, '2019-06-01', 14, 10), 
+    (1, 80, '2019-06-04', 13, 11), 
+    (2, 90, '2019-06-08', 12, 12), 
+    (1, 75, '2019-05-31', 9, 13), 
+    (1, 60, '2019-05-31', 10, 14), 
+    (2, 90, '2019-06-01', 11, 15), 
+    (2, 91, '2019-06-12', 17, 16), 
+    (2, 30, '2019-06-13', 19, 17), 
+    (1, 92, '2019-06-13', 16, 18), 
+    (2, 96, '2019-06-20', 18, 19), 
+    (2, 80, '2019-06-23', 20, 20)
+End_Query
+
+
+Initial_database_setup: delete_high_prio_lung_list
+Query:
+    DELETE FROM high_prio_lung_list
+End_Query
+
+Initial_database_setup: insert_high_prio_lung_list
+Query:
+     INSERT INTO high_prio_lung_list
+     (availability_id, priority, placement_date, patient_id, high_prio_lung_listid)
+     VALUES
+     (2, 70, '2019-06-03', 37, 1), 
+     (2, 60, '2019-06-04', 38, 2), 
+     (2, 90, '2019-06-08', 39, 3), 
+     (1, 80, '2019-05-31', 40, 4), 
+     (2, 70, '2019-06-08', 21, 5), 
+     (2, 60, '2019-05-31', 22, 6), 
+     (1, 90, '2019-05-31', 23, 7), 
+     (2, 80, '2019-06-01', 24, 8), 
+     (2, 90, '2019-06-02', 25, 9), 
+     (2, 70, '2019-06-03', 26, 10), 
+     (2, 60, '2019-06-04', 27, 11), 
+     (1, 90, '2019-06-08', 28, 12), 
+     (2, 80, '2019-05-31', 29, 13), 
+     (2, 90, '2019-05-31', 30, 14), 
+     (1, 70, '2019-06-01', 31, 15), 
+     (2, 70, '2019-06-08', 32, 16), 
+     (2, 60, '2019-05-31', 33, 17), 
+     (1, 92, '2019-05-31', 34, 18), 
+     (2, 80, '2019-06-01', 35, 19), 
+     (2, 90, '2019-06-02', 36, 20)
+End_Query
+
+
+Initial_database_setup: update_transplant_center
+Query:
+UPDATE transplant_center
+   SET  tc_availability_id = 1
+ WHERE transplant_center_id < 9
+End_Query
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

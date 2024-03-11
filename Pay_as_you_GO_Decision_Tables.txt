@@ -1,0 +1,113 @@
+
+
+Table 0: Payments
+If:                                         | 0| 1|
+units_in_all_tiers > 0                      | Y| N|
+Then:
+report is alltiers                          | X|  |
+report is notier                            |  | X|
+'show derived data from input'              | X| X|
+# .......
+
+
+Attribute: units_in_all_tiers 
+Equals: units_in_tier1 + units_in_tier2 + units_in_tier3
+
+Attribute: TotalUnitsAtStartLastHour   Type: Integer 
+Equals: input1 - input3
+
+Attribute: Start                       Type: Integer      
+Equals: End - input3
+
+Attribute: FreeUnitsAtStartLastHour    Type: Integer 
+Equals: max(Free_Units - TotalUnitsAtStartLastHour, 0)
+
+
+Table 1: Units in tier 1
+If:                                    | 0| 1| 2|
+Start > Tier_2                         | Y| N| N|
+End > Tier_2                           | -| Y| N|
+Then:
+units_in_tier1_bc = 0                  | X|  |  |
+units_in_tier1_bc = Tier_2 - Start     |  | X|  |
+units_in_tier1_bc = End - Start        |  |  | X|
+# .......
+bc=before correction with free units
+
+
+Table 1a: correct tier1 with free units
+If:                                                            | 0| 1|
+units_in_tier1_bc <= FreeUnitsAtStartLastHour                  | Y| N|
+Then: 
+units_in_tier1 = 0                                             | X|  |
+units_in_tier1 = units_in_tier1_bc - FreeUnitsAtStartLastHour  |  | X| 
+# .......
+
+# Alternative to table 1a:
+# Attribute: units_in_tier1
+# Equals: max(units_in_tier1_bc - FreeUnitsAtStartLastHour, 0)
+
+
+Table 2: Units in tier 2
+If:                                    | 0| 1| 2| 3| 4| 5|
+Start > Tier_3                         | Y| N| N| N| N| N|
+Start > Tier_2                         | -| Y| Y| N| N| N|
+End > Tier_3                           | -| Y| N| Y| N| N|
+End > Tier_2                           | -| -| -| -| Y| N|
+Then:
+units_in_tier2 = Tier_3 - Tier_2       |  |  |  | X|  |  |
+units_in_tier2 = Tier_3  - Start       |  | X|  |  |  |  |
+units_in_tier2 = End - Tier_2          |  |  |  |  | X|  |
+units_in_tier2 = End - Start           |  |  | X|  |  |  |
+units_in_tier2 = 0                     | X|  |  |  |  | X|
+# .......
+
+
+Table 3: Units in tier 3
+If:                                    | 0| 1| 2|
+Start > Tier_3                         | Y| N| N|
+End > Tier_3                           | -| Y| N|
+Then:
+units_in_tier3 = End - Start           | X|  |  |
+units_in_tier3 = End - Tier_3          |  | X|  |
+units_in_tier3 = 0                     |  |  | X|
+# .......
+
+
+Attribute: Free_Units  Type: Integer 
+Equals: 10000
+Attribute: Tier_1      Type: Integer 
+Equals: 0
+Attribute: Tier_2      Type: Integer 
+Equals: 20000
+Attribute: Tier_3      Type: Integer
+Equals: 50000
+
+Attribute: input1      Type: Integer 
+Askable_using: "Input 1 - all units to end hour?"
+
+Attribute: End         Type: Integer 
+Askable_using: "Input 2 - units in month to end hour?"
+
+Attribute: input3      Type: Integer
+Askable_using: "Input 3 - units in last hour?"
+
+
+GoalAttribute: report
+Case: alltiers
+Print: "Number of units consumed in the last hour: %s" units_in_all_tiers
+Print: "Units in tier 1: %s" units_in_tier1  
+Print: "Units in tier 2: %s" units_in_tier2  
+Print: "Units in tier 3: %s" units_in_tier3   
+
+
+Case: notier
+Print: "No units used in the last hour" 
+
+GoalProposition: 'show derived data from input'
+Print: "********* Derived data from input *********"
+Print: "All units to start hour...........: %s" TotalUnitsAtStartLastHour
+Print: "Units in month to start hour......: %s" Start
+Print: "Free units remaining at start hour: %s" FreeUnitsAtStartLastHour
+
+

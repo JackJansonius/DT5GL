@@ -1,0 +1,530 @@
+
+
+PostgreSQL_database: "xxxx_xxx_v5"
+
+
+
+# OVERZICHT:
+# VolgendeClient
+#   'Volgende client aanwezig'
+#
+# Label
+#   'Volgende prik voor client' 
+#   'Basisprik voldoet aan cohort'
+#       Datum_basis_vroegst
+#           PrikLeeftijd
+#           Vaccin
+#       Datum_basis_laatst
+#           PrikLeeftijd
+#           Vaccin
+#   'Basisprik voldoet aan interval'
+#       datum_vorig_basisprik (var)
+#   'Boosterprik voldoet aan cohort'
+#       Datum_booster_vroegst
+#           PrikLeeftijd
+#           Vaccin
+#   'Boosterprik voldoet aan interval'
+#       datum_vorig_basisprik (var)
+#       datum_vorig_boosterprik (var)
+
+
+
+
+########################### Database views ###########################
+
+Database_view: client
+With_attributes: id
+Query:
+SELECT client_id
+  FROM prikken_0_clt
+  where vnr = %s  
+With_arguments: client.auto_index
+
+
+Database_view: prik
+With_attributes: 
+vaccinatie_id_bron, geboortedatum, client_id, leverancierartikelen_code, uitvoerder, uitvoerdatum, serie, leeftijd_1e_vaccinatie
+Query:
+  SELECT  rid_fact, geboortedatum, client_id, product_code, agg_type_code, uitvoer_datum, serie, leeftijd_1e_vaccinatie
+  FROM prikken_0 
+  WHERE client_id = '%s' and vnr = %s and geboortedatum is not null
+With_arguments: client.id, prik.auto_index
+
+
+
+
+
+Table 0:
+If:                                              | 0| 1|
+'Volgende client aanwezig'                       | Y| N|
+Then:
+VolgendeClient is Geselecteerd                   | X|  |
+VolgendeClient is Beeindigd                      |  | X|
+# .......
+# Repeat until: Beeindigd
+
+
+Proposition: 'Volgende client aanwezig'
+Obtain_instance_from_database_view: client
+
+
+rTable 1:  
+If:                                              | 0| 1|
+'Volgende prik voor client'                      | Y| N|
+prik.serie = "Lege aanlevering"                  | Y| -|
+Then:                                                
+Label is Beeindigd                               |  | X|
+Label is AfkeurLeeg                              | X|  |
+# .......
+# Repeat until: Beeindigd
+
+
+
+Table 2a:  
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|
+prik.serie = "A"                                 | Y| Y| Y| Y| Y| Y| Y| Y| Y| N|
+Datum_vaccinatie < 20220101                      | Y| N| N| N| N| N| N| N| N| -|
+prik.uitvoerder  = "GGD"                         | -| Y| N| N| N| N| N| N| N| -|
+aNr = 0                                          | -| -| Y| N| N| N| N| N| N| -|
+Datum_eerste_Basisprik >= 20220101               | -| -| -| Y| N| N| N| N| N| -|          
+'Boosterprik voldoet aan cohort'                 | -| -| -| -| Y| Y| Y| Y| N| -|      
+bNr = 0                                          | -| -| -| -| Y| N| N| N| -| -|
+bNr < 5                                          | -| -| -| -| -| Y| Y| N| -| -|
+'Boosterprik voldoet aan interval'               | -| -| -| -| -| Y| N| -| -| -|
+Then:                                                                           
+Label is AfkeurOmlabel                           |  |  |  |  |  |  | X| X| X|  |
+Label is BS_01                                   |  |  |  |  | X|  |  |  |  |  |
+Label is BS_Volgend                              |  |  |  |  |  | X|  |  |  |  |
+# .......
+# Door andere uitvoerders dan de GGD werden na 1 januari 2022 boostervaccins aangeleverd met label A.
+# Deze alsnog als boostervaccinatie beoordelen en labelen. 
+# Maar alleen als voor 1 januari 2022 al basisvaccinaties zijn geregistreerd.  
+# AAAA => AABB: Ja, als er basisprikken zijn voor 2022.
+# AABA => AABB: Ja, als er basisprikken zijn voor 2022.
+# AA => BB; Nee, als geen basisprikken voor 2022; goedkeuren volgens tabel 2b.
+# BA => BB; Nee, als geen basisprikken voor 2022; afkeuren volgens tabel 2b.
+# Elke kolom zonder conclusie = uitvoeren volgens eerdere functionaliteit (=tabel 2b). 
+
+
+
+
+Table 2b:  
+If:                                              | 0| 1| 2| 3| 4| 5| 6|
+prik.serie = "A"                                 | Y| Y| Y| Y| Y| Y| N|
+'Basisprik voldoet aan cohort'                   | Y| Y| Y| Y| Y| N| -|
+aNr = 0                                          | Y| -| N| N| N| -| -|
+bNr = 0                                          | Y| N| Y| Y| Y| -| -|
+aNr < 3                                          | -| -| Y| Y| N| -| -|
+'Basisprik voldoet aan interval'                 | -| -| Y| N| -| -| -|
+Then:                                                                  
+Label is Afkeur                                  |  | X|  | X| X| X|  |
+Label is Basis_1                                 | X|  |  |  |  |  |  |
+Label is Basis_Volgend                           |  |  | X|  |  |  |  |
+# .......
+# aNr = volgnummer basisprik; als 0 dan nog geen basisprikken geregistreerd.
+# bNr = volgnummer booster; als 0 dan nog geen boosterprikken geregistreerd.
+# Maximaal 3 basisprikken toegestaan; de vierde wordt afgekeurd.
+
+Proposition: 'Volgende prik voor client' 
+Obtain_instance_from_database_view: prik
+
+
+Table 3:  
+If:                                              | 0| 1| 2| 3| 4| 5| 6| 7|
+True = strcontains(prik.serie, "BS")             | Y| Y| Y| Y| Y| Y| Y| N|
+'Boosterprik voldoet aan cohort'                 | Y| Y| Y| Y| Y| Y| N| -|
+aNr = 0                                          | Y| -| -| -| N| N| -| -|
+bNr = 0                                          | Y| N| N| N| Y| Y| -| -|
+bNr < 5                                          | -| Y| Y| N| -| -| -| -|
+'Boosterprik voldoet aan interval'               | -| Y| N| -| Y| N| -| -|
+Then:                                                                     
+Label is Afkeur                                  |  |  | X| X|  | X| X|  |
+Label is BS_01                                   | X|  |  |  | X|  |  |  |
+Label is BS_Volgend                              |  | X|  |  |  |  |  |  |
+# .......
+# Maximaal 5 boosterprikken toegestaan; de zesde wordt afgekeurd.
+
+
+Attribute: True  Type: Integer
+Equals: 1
+
+rTable 4:  
+If:                                                       | 0|
+Datum_vaccinatie >= Datum_basis_vroegst_min_marge         | Y|
+Datum_vaccinatie <= Datum_basis_laatst_plus_marge         | Y|
+Then:                                                
+'Basisprik voldoet aan cohort'                            | X|
+# .......
+# Datums hier integer; formaat yyyymmdd
+
+
+# Voor gebruik in condities; formaat yyyymmdd:
+Attribute: Datum_vaccinatie                 
+Equals:    to_int(prik.uitvoerdatum)  
+
+# Veld in de database; formaat: 'yyyy-mm-dd': 
+Attribute: prik.uitvoerdatum                Type: Text
+Attribute: prik.geboortedatum               Type: Text
+
+Attribute: PrikLeeftijd   
+Equals: leeftijd_op_uitvoerdatum(prik.uitvoerdatum, prik.geboortedatum)
+
+
+Attribute: Datum_basis_vroegst_min_marge     Type: Integer
+Equals:    to_integer(fdatum(integer_naar_fdatuminput(Datum_basis_vroegst)) - fdeltadagen(7))
+Attribute: Datum_basis_laatst_plus_marge     Type: Integer
+Equals:    to_integer(fdatum(integer_naar_fdatuminput(Datum_basis_laatst)) + fdeltadagen(7))
+Attribute: Datum_booster_vroegst_min_marge  Type: Integer
+Equals:    to_integer(fdatum(integer_naar_fdatuminput(Datum_booster_vroegst)) - fdeltadagen(7))
+
+# Het aantal margedagen is het getal in: fdeltadagen(7); kan hier aangepast worden. 
+# Datum_basis_vroegst is een datum als integer: yyyymmdd (zoals bepaald in verschillende beslissingstabellen). 
+# integer_naar_fdatuminput(Datum_basis_vroegst) maakt er tekst van: 'yyyy-mm-dd'.
+# fdatum('yyyy-mm-dd') maakt er een intern formaat van, zodat er fdeltadagen bij opgeteld of afgetrokken kunnen worden. 
+# to_integer(..) zet de nieuwe datum in dit interne formaat weer om naar een integer in formaat yyyymmdd. 
+
+########### Bepalen Datum Basis Vroegst ######################################
+
+rTable 5:   
+If:                                                         | 0|
+True = Vaccin in ["COM", "MOD"]                             | Y|
+aNr = 2                                                     | Y|
+PrikLeeftijd >= 12                                          | Y|                                     
+Then:                                                           
+Datum_basis_vroegst = 20211001                              | X|
+# .......
+# Voor alle 3e A-prikken pas na 1-10-2021 voor prod = com en mod
+# Overruled cohorten 12-18 en 18+; niet de eerdere cohorten! 
+
+
+rTable 6: Cohort 0.5-5  
+If:                                                         | 0| 1| 2|
+PrikLeeftijd < 5                                            | Y| Y| Y|
+Vaccin = "COM_KIDS"                                         | Y| -| -|
+Vaccin = "COM_KIDS_XBB"                                     | -| Y| -|
+Then:                                                              
+Datum_basis_vroegst = 20230116                              | X|  |  |
+Datum_basis_vroegst = 20231002                              |  | X|  |	    
+Datum_basis_vroegst = 20500101                              |  |  | X|
+# .......
+# Kinderen van 6 maanden t/m 4 jaar mogen ook gevaccineerd worden vanaf 16-01-2023 indien ze tot een risicogroep behoren.
+# Er wordt een speciaal vaccin van COM gebruikt in deze groep. 
+# 3 doses; interval tussen vaccinatie 1 en 2 => 3 weken (=21 dagen), interval tussen vaccinatie 2 en 3 => 8 weken (=56 dagen). 
+
+
+rTable 7: Cohort 5-12 
+If:                                                         | 0| 1| 2|
+PrikLeeftijd < 12                                           | Y| Y| Y|
+True = Vaccin in ["COMKI", "MOD", "UNK"]                    | Y| -| -|
+Vaccin = "COMKI_XBB"                                        | -| Y| -|
+Then:                                                              
+Datum_basis_vroegst = 20211220                              | X|  |  |
+Datum_basis_vroegst = 20231002                              |  | X|  |
+Datum_basis_vroegst = 20500101                              |  |  | X|
+# .......
+# Kinderen van 5 t/m 11 met een medisch hoog risico mochten vanaf 20 december 2021 gevaccineerd worden.
+
+
+
+rTable 8: Cohort 12-18
+If:                                                         | 0| 1| 2| 3| 4| 5| 6|
+PrikLeeftijd < 18                                           | Y| Y| Y| Y| Y| Y| Y|
+True = Vaccin in ["COM", "UNK"]                             | Y| -| -| -| -| -| -|
+Vaccin = "MOD"                                              | -| Y| -| -| -| -| -|
+Vaccin = "COM_BA45"                                         | -| -| Y| -| -| -| -|
+Vaccin = "NVXD"                                             | -| -| -| Y| -| -| -|
+Vaccin = "COM_XBB"                                          | -| -| -| -| Y| -| -|
+Vaccin = "NVXD_XBB"                                         | -| -| -| -| -| Y| -|
+Then:                                                                    
+Datum_basis_vroegst = 20210104                              | X|  |  |  |  |  |  |
+Datum_basis_vroegst = 20210118                              |  | X|  |  |  |  |  |
+Datum_basis_vroegst = 20230701                              |  |  | X|  |  |  |  |
+Datum_basis_vroegst = 20221011                              |  |  |  | X|  |  |  |
+Datum_basis_vroegst = 20231002                              |  |  |  |  | X|  |  |
+Datum_basis_vroegst = 20231211                              |  |  |  |  |  | X|  |
+Datum_basis_vroegst = 20500101                              |  |  |  |  |  |  | X|
+# .......
+# De derde basisprik met "COM" en "MOD" heeft een afwijkende Datum_basis_vroegst; zie tabel 5. 
+
+
+
+rTable 9: Cohort 18+
+If:                                                         | 0| 1| 2| 3| 4| 5| 6| 7| 8|
+PrikLeeftijd >= 18                                          | Y| Y| Y| Y| Y| Y| Y| Y| Y|
+True = Vaccin in ["COM", "UNK"]                             | Y| -| -| -| -| -| -| -| -|
+Vaccin = "MOD"                                              | -| Y| -| -| -| -| -| -| -|
+Vaccin = "COM_BA45"                                         | -| -| Y| -| -| -| -| -| -|
+Vaccin = "NVXD"                                             | -| -| -| Y| -| -| -| -| -|
+Vaccin = "AZ"                                               | -| -| -| -| Y| -| -| -| -|
+Vaccin = "JANSS"                                            | -| -| -| -| -| Y| -| -| -|
+Vaccin = "COM_XBB"                                          | -| -| -| -| -| -| Y| -| -|
+Vaccin = "NVXD_XBB"                                         | -| -| -| -| -| -| -| Y| -|
+Then:                                                                          
+Datum_basis_vroegst = 20210104                              | X|  |  |  |  |  |  |  |  |
+Datum_basis_vroegst = 20210118                              |  | X|  |  |  |  |  |  |  |
+Datum_basis_vroegst = 20230701                              |  |  | X|  |  |  |  |  |  |
+Datum_basis_vroegst = 20220314                              |  |  |  | X|  |  |  |  |  |
+Datum_basis_vroegst = 20210208                              |  |  |  |  | X|  |  |  |  |
+Datum_basis_vroegst = 20210419                              |  |  |  |  |  | X|  |  |  |
+Datum_basis_vroegst = 20231002                              |  |  |  |  |  |  | X|  |  |
+Datum_basis_vroegst = 20231211                              |  |  |  |  |  |  |  | X|  |
+Datum_basis_vroegst = 20500101                              |  |  |  |  |  |  |  |  | X|
+# .......
+# De derde basisprik met "COM" en "MOD" heeft een afwijkende Datum_basis_vroegst; zie tabel 5. 
+
+
+########### Bepalen Datum Basis Laatst ######################################
+
+
+ 
+rTable 10:   
+If:                                                         | 0| 1| 2| 3| 4| 5|
+Vaccin = "MOD"                                              | Y| -| -| N| N| N|
+Vaccin = "COM"                                              | -| Y| -| N| N| N|	
+True = Vaccin in ["COMBI", "COM_BA45", "COM_KIDS", "NVXD"]  | -| -| Y| N| N| N|  
+PrikLeeftijd >= 12                                          | -| -| -| Y| -| -|
+Vaccin = "AZ"                                               | -| -| -| Y| -| -|
+PrikLeeftijd >= 18                                          | -| -| -| -| Y| -|
+Vaccin = "JANSS"                                            | -| -| -| -| Y| -|
+Then:                                                                 
+Datum_basis_laatst = 20230417                               | X|  |  |  |  |  |	
+Datum_basis_laatst = 20230701                               |  | X|  |  |  |  |
+Datum_basis_laatst = 20231001                               |  |  | X|  |  |  |
+Datum_basis_laatst = 20221101                               |  |  |  | X|  |  |
+Datum_basis_laatst = 20230731                               |  |  |  |  | X|  |
+Datum_basis_laatst = 20500101                               |  |  |  |  |  | X|
+# .......
+
+
+
+#############################################################################
+
+rTable 11:  
+If:                                                         | 0|
+Datum_vaccinatie >= Datum_booster_vroegst_min_marge         | Y|
+Then:                                                           
+'Boosterprik voldoet aan cohort'                            | X|
+# .......
+
+
+########### Bepalen Datum Booster Vroegst ###################################
+
+
+rTable 12: Cohort 0.5-5  
+If:                                                         | 0|
+PrikLeeftijd < 5                                            | Y|
+Then:                                                           
+Datum_booster_vroegst = 20500101                            | X|
+# .......
+# herhaalprik voor deze groep nog niet mogelijk
+
+
+rTable 13: Cohort 5-12  
+If:                                                         | 0| 1| 2|
+PrikLeeftijd < 12                                           | Y| Y| Y|
+Vaccin = "COMBI"                                            | Y| -| -|
+Vaccin = "COMKI_XBB"                                        | -| Y| -|
+Then:                                                           
+Datum_booster_vroegst = 20230222                            | X|  |  |
+Datum_booster_vroegst = 20231002                            |  | X|  |
+Datum_booster_vroegst = 20500101                            |  |  | X|
+# .......
+# Kinderen van 5 t/m 11 mogen vanaf 20230222 wel een herhaalprik ontvangen (met COM, bivalent)
+
+
+
+rTable 14: Cohort 12-18  
+If:                                                         | 1| 2| 3| 4| 5| 6|
+PrikLeeftijd < 18                                           | Y| Y| Y| Y| Y| Y|
+True = Vaccin in ["COM","MOD","UNK"]                        | Y| -| -| -| -| -|
+True = Vaccin in ["COM_BA1","COM_BA45","MOD_BA1"]           | -| Y| -| -| -| -|
+True = Vaccin in ["NVXD","AZ","JANSS"]                      | -| -| Y| -| -| -|
+Vaccin = "COM_XBB"                                          | -| -| -| Y| -| -|
+Vaccin = "NVXD_XBB"                                         | -| -| -| -| Y| -|
+Then:                                                                 
+Datum_booster_vroegst = 20220228                            | X|  |  |  |  |  |
+Datum_booster_vroegst = 20220919                            |  | X|  |  |  |  |
+Datum_booster_vroegst = 20231002                            |  |  |  | X|  |  |
+Datum_booster_vroegst = 20231211                            |  |  |  |  | X|  |
+Datum_booster_vroegst = 20500101                            |  |  | X|  |  | X|
+# .......
+
+
+rTable 15: Cohort 18+  
+If:                                                         | 0| 1| 2| 3| 4| 5| 6| 7|
+PrikLeeftijd >= 18                                          | Y| Y| Y| Y| Y| Y| Y| Y|
+True = Vaccin in ["COM","MOD","UNK"]                        | Y| -| -| -| -| -| -| -|
+Vaccin = "JANSS"                                            | -| Y| -| -| -| -| -| -|
+True = Vaccin in ["COM_BA1","COM_BA45","MOD_BA1"]           | -| -| Y| -| -| -| -| -|
+Vaccin = "NVXD"                                             | -| -| -| Y| -| -| -| -|
+Vaccin = "AZ"                                               | -| -| -| -| Y| -| -| -|
+Vaccin = "COM_XBB"                                          | -| -| -| -| -| Y| -| -|
+Vaccin = "NVXD_XBB"                                         | -| -| -| -| -| -| Y| -|
+Then:                                                                       
+Datum_booster_vroegst = 20211118                            | X|  |  |  |  |  |  |  |
+Datum_booster_vroegst = 20220620                            |  | X|  |  |  |  |  |  |
+Datum_booster_vroegst = 20220919                            |  |  | X|  |  |  |  |  |
+Datum_booster_vroegst = 20221005                            |  |  |  | X|  |  |  |  |
+Datum_booster_vroegst = 20231002                            |  |  |  |  |  | X|  |  |
+Datum_booster_vroegst = 20231211                            |  |  |  |  |  |  | X|  |
+Datum_booster_vroegst = 20500101                            |  |  |  |  | X|  |  | X|
+# .......
+
+
+
+rTable 16: Bepalen interval voor basisprikken
+If:                                                                                    | 0| 1| 2|
+PrikLeeftijd < 5                                                                       | Y| Y| N|
+aNr = 2                                                                                | Y| N| -|
+Datum_vaccinatie >= to_integer(fdatum(datum_vorig_basisprik) + fdeltadagen(56))        | Y| -| -|
+Datum_vaccinatie >= to_integer(fdatum(datum_vorig_basisprik) + fdeltadagen(21))        | -| Y| Y|
+Then:                                                                                            
+'Basisprik voldoet aan interval'                                                       | X| X| X|
+# .......
+# Standaard interval voor basisprikken: 21 dagen.
+# Afwijkend interval voor cohort 0-5jr; 3de basisprik (56 dagen/8 weken).
+
+# datum_vorig_basisprik formaat 'yyyy-mm-dd' (zoals opgeslagen in database)
+# nu met to_integer(fdatum(datum_vorig_basisprik) + fdeltadagen(x)) er x dagen bij optellen. 
+
+
+rTable 17: Bepalen interval voor boosterprikken 
+If:                                                                                    | 0| 1|
+bNr = 0                                                                                | Y| N|
+Datum_vaccinatie >= to_integer(fdatum(datum_vorig_basisprik) + fdeltadagen(60))        | Y| -|
+Datum_vaccinatie >= to_integer(fdatum(datum_vorig_boosterprik) + fdeltadagen(60))      | -| Y|
+Then:                                                
+'Boosterprik voldoet aan interval'                                                     | X| X|
+# .......
+
+# De eerste boosterprik wordt vergeleken met de laatste basisprik (die er dus moet zijn). 
+# Iedere volgende boosterprik wordt vergeleken met de voorgaande boosterprik
+
+
+
+Attribute: datum_vorig_basisprik            Type: Text
+Attribute: datum_vorig_boosterprik          Type: Text
+
+Attribute: prik.leverancierartikelen_code   Type: Text
+
+Attribute: omschrijving                     Type: Text
+Equals: prik.leverancierartikelen_code
+
+
+Attribute: Vaccin 
+Equals: "AZ"             if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxx'                   else \
+        "JANSS"          if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxx 0,5ML'                 else \
+        "JANSS"          if omschrijving == 'COVID-19 TRIAL xxxxxxxxxxxxxxxxxxxxxxx0,5ML HB'        else \
+        "MOD"            if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxx 0,5ML'                 else \
+        "MOD"            if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxx 0,25ML'                else \
+        "MOD_BA1"        if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxxxxxx INJ 0,5ML'    else \
+        "UNK"            if omschrijving == 'COVID-19 VACCIN NIET GESPECIFICEERD INJVLST'           else \
+        "COM"            if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxx 0,3ML'                  else \
+        "COMKI"          if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxx JAAR INJVLST 0,2ML'        else \  
+        "COMKI_XBB"      if omschrijving == 'COVID-19 VACCIN xxxxxxx5-11 JAAR XBB.1.5 INJ 0,3ML'    else \  
+        "COMBI"          if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxx.4-5 INJ 0,2ml'    else \
+        "COM_BA1"        if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxxxxxx INJ 0,3ML'    else \
+        "COM_BA45"       if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxxxxxx INJ 0,3ML'    else \
+        "COM_XBB"        if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxxxx 0,3ML'          else \
+        "COM_KIDS"       if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxINJVLST 0,2ML'      else \
+        "COM_KIDS_XBB"   if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxxxxxxx INJ 0,2ML'    else \
+        "NVXD_XBB"       if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxxxxxx 0,5ML'             else \
+        "NVXD"           if omschrijving == 'COVID-19 VACCIN xxxxxxxxxxxxxxx 0,5ML'                 else 'xxxx'
+
+
+Attribute: label_basis_volgend    Type: Text
+Equals: "Basis" + str(aNr_volgend)
+
+Attribute: label_booster_volgend  Type: Text
+Equals: "BS0" + str(bNr_volgend)
+
+Attribute: aNr_volgend            Type: Integer
+Equals: aNr + 1
+
+Attribute: bNr_volgend            Type: Integer
+Equals: bNr + 1
+
+
+XX Attribute: prik.rangnummer        Type: Text 
+
+XX Attribute: prik_rangnummer        Type: Text
+XX Equals:  "" if prik.rangnummer == "None" else prik.rangnummer 
+
+
+
+
+########################### GoalAttributes ###########################
+
+GoalAttribute: VolgendeClient
+Repeat_until: Beeindigd
+
+Case: Beeindigd
+Print: "#REM# ===================================================================="
+Print: "Beeindigd."
+Print: "===================================================================="
+
+Case: Geselecteerd
+>>: aNr = 0
+>>: bNr = 0
+>>: datum_vorig_basisprik = '0000-00-00' 
+>>: datum_vorig_boosterprik = '0000-00-00'
+
+
+
+GoalAttribute: Label
+Repeat_until:  Beeindigd
+
+Case: Beeindigd
+Print: "#REM# - Labels client '%s' verwerkt."       client.id  
+
+Case: Afkeur
+Print: "%s;Afkeur"   prik.vaccinatie_id_bron       
+
+Case: AfkeurLeeg
+Print: "%s;Afkeur"   prik.vaccinatie_id_bron 
+
+Case: AfkeurOmlabel
+Print: "%s;Afkeur"   prik.vaccinatie_id_bron  
+
+
+Case: Basis_1
+Print: "%s;Basis1"   prik.vaccinatie_id_bron      
+>>: aNr = 1
+>>: datum_vorig_basisprik = prik.uitvoerdatum
+>>: Datum_eerste_Basisprik = to_int(prik.uitvoerdatum) 
+
+
+Case: Basis_Volgend
+Print: "%s;%s"       prik.vaccinatie_id_bron       label_basis_volgend 
+>>: aNr = aNr_volgend
+>>: datum_vorig_basisprik = prik.uitvoerdatum
+
+
+Case: BS_01
+Print: "%s;BS01"     prik.vaccinatie_id_bron        
+>>: bNr = 1
+>>: datum_vorig_boosterprik = prik.uitvoerdatum
+
+
+Case: BS_Volgend 
+Print: "%s;%s"       prik.vaccinatie_id_bron        label_booster_volgend 
+>>: bNr = bNr_volgend
+>>: datum_vorig_boosterprik = prik.uitvoerdatum
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

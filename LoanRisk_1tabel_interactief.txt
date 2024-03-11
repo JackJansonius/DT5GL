@@ -1,0 +1,84 @@
+
+
+
+Table 0: 
+If:                                              | 0| 1|
+'Continue'                                       | Y| N|
+Then:                                                
+LoanRisk is Exit                                 |  | X|
+# .......
+
+Proposition: 'Continue'
+Askable_using: "Compute loan risk for next borrower?"
+
+Table 1: 
+If:                            | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|10|11|12|
+Worst_DTI < 36                 | Y| Y| Y| Y| Y| Y| Y| N| N| N| N| N| N|          
+Worst_DTI <= 45                | -| -| -| -| -| -| -| Y| Y| Y| Y| Y| N|
+LTV_Risk is Low                | Y| Y| Y| N| N| N| N| Y| Y| N| N| N| -|
+LTV_Risk is Medium             | -| -| -| Y| Y| Y| N| -| -| Y| Y| N| -|
+Worst_Credit_Score >= 680      | Y| N| N| -| -| -| -| Y| N| -| -| -| -|
+Worst_Credit_Score >= 640      | -| Y| N| -| -| -| -| -| -| -| -| -| -|
+Worst_Credit_Score >  700      | -| -| -| Y| N| N| -| -| -| Y| N| -| -|
+Worst_Credit_Score >= 660      | -| -| -| -| Y| N| -| -| -| -| -| -| -|
+Then:
+LoanRisk is Low                | X|  |  | X|  |  |  |  |  |  |  |  |  |    
+LoanRisk is Medium             |  | X|  |  | X|  |  | X|  | X|  |  |  |
+LoanRisk is High               |  |  | X|  |  | X| X|  | X|  | X| X| X|
+# .......
+
+
+Table 2:
+If:                            | 0| 1| 2| 3|
+LTV_Pct_provided is True       | Y| Y| Y| N|
+LTV_Pct <  60                  | Y| N| N| -|
+LTV_Pct <= 80                  | -| Y| N| -|
+Then:
+LTV_Risk is Low                | X|  |  |  |
+LTV_Risk is Medium             |  | X|  |  |
+# .......
+
+# LTV_Risk is High             |  |  | X| X|
+
+
+
+Attribute: Worst_DTI
+Askable_using: "What is the maximum provided Debt-To-Income ratio (DTI) of the borrower [36-45]?"
+
+Attribute: Worst_Credit_Score
+Askable_using: "What is the minimum provided Credit Score of the borrower (600-800)?"
+
+Attribute: LTV_Pct_provided
+Askable_using: "Loan-to-Value ratio (LTV) related to the desired loan amount provided?"
+
+Attribute: LTV_Pct
+Askable_using: "What is the Loan-to-Value ratio (LTV) [60-80]?"
+
+GoalAttribute: LoanRisk
+Repeat_until: Exit
+
+Case: Exit
+Print: "Finished"
+
+Case: Low
+Print: "--------------------"
+Print: "Loan Risk is: LOW"
+Print: "--------------------"
+
+Case: Medium
+Print: "--------------------"
+Print: "Loan Risk is: MEDIUM"
+Print: "--------------------"
+
+Case: High
+Print: "--------------------"
+Print: "Loan Risk is: HIGH"
+Print: "--------------------"
+
+
+
+
+
+
+
+

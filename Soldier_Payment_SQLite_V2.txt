@@ -1,0 +1,310 @@
+
+
+SQLite_database: "Database/Soldier Payment2.db"
+
+# Reference day = the 15th of the month. 
+# Hourly rates moved from database tables to decision tables. 
+
+Table 0:
+If:                                            | 0| 1|
+'Next soldier present'                         | Y| N|     
+Then:                                   
+NextSoldier is Selected                        | X|  |
+NextSoldier is Finished                        |  | X|
+# .......
+# Repeat until: Finished
+
+Proposition: 'Next soldier present'
+Obtain_instance_from_database_view: soldier
+
+Table 1: 
+If:                                            | 0| 1| 
+Next year in [firstYear-lastYear]              | Y| N|
+Then:                                  
+EvalYear is Selected                           | X|  |
+EvalYear is Finished                           |  | X|
+# .......
+# Repeat until: Finished
+
+Table 2: 
+If:                                            | 0| 1| 2| 3| 4|
+Next month in [firstMonth-lastMonth]           | Y| Y| Y| Y| N|
+feature.service = "retired"                    | Y| Y| N| N| -|
+current_pay_rate = 0                           | Y| N| -| -| -|
+current_pay_rate = pay_rate_this_month         | -| -| Y| N| -|
+Then:                                     
+EvalMonth is Skip                              | X|  | X|  |  |
+EvalMonth is NoPayRate                         |  | X|  |  |  |
+EvalMonth is NewPayRate                        |  |  |  | X|  |
+EvalMonth is Finished                          |  |  |  |  | X|
+# .......
+# Repeat until: Finished
+
+
+# Determine range of years to be checked: [firstYear-lastYear]
+Attribute: firstYear                 Type: Integer
+Equals: int(soldier.yearmonth_start/100)
+
+Attribute: lastYear                  Type: Integer
+Equals: int(soldier.yearmonth_end/100)
+
+# Determine range of months to be checked within selected year: [firstMonth-lastMonth] 
+Attribute: firstMonth                Type: Integer
+Equals: soldier.yearmonth_start % 100 if year == firstYear else 1
+
+Attribute: lastMonth                 Type: Integer
+Equals: soldier.yearmonth_end % 100 if year == lastYear  else 12 
+
+# reference date for retrieving data from the database ("yyyy-mm-dd")
+Attribute: reference_date            Type: Text
+Equals: str(year) + "-" + zerofill(month,2) + "-15"
+
+# reference date for use in conditions (yyyymmdd)
+Attribute: checkdate
+Equals: to_int(reference_date)
+
+
+Attribute: fromdate                  Type: Text
+Equals: "01/" + zerofill(month,2) + "/" + str(year) 
+
+Attribute: soldier.yearmonth_start      Type: Integer
+Attribute: soldier.yearmonth_end        Type: Integer
+
+Attribute: pay_rate_this_month  Type: Real
+Equals: base_rate + rank_rate + profession_rate + service_rate + unit_rate + combat_rate
+
+
+
+# Base: Base $1/hr.
+
+rTable 3: 
+If:                                  | 0| 1| 2|
+feature.base = "base"                | -| Y| Y|
+checkdate < 20150101                 | Y| N| N|
+checkdate < 20160701                 | -| Y| N|
+Then:                                          
+base_rate = 0                        | X|  |  |
+base_rate = 1.00                     |  | X|  |
+base_rate = 1.25                     |  |  | X|
+# .......
+
+
+
+# Rank: Private $1/hr., corporal $2/hr., sergeant $3/hr., lieutenant $4/hr., captain $5/hr
+rTable 4: 
+If:                                  | 0| 1| 2| 3| 4| 5| 6| 7| 8| 9|10|
+feature.rank = "private"             | -| Y| Y| -| -| -| -| -| -| -| -|
+feature.rank = "corporal"            | -| -| -| Y| Y| -| -| -| -| -| -|
+feature.rank = "sergeant"            | -| -| -| -| -| Y| Y| -| -| -| -|
+feature.rank = "lieutenant"          | -| -| -| -| -| -| -| Y| Y| -| -|
+feature.rank = "captain"             | -| -| -| -| -| -| -| -| -| Y| Y|
+checkdate < 20150101                 | Y| N| N| N| N| N| N| N| N| N| N|
+checkdate < 20160701                 | -| Y| N| Y| N| Y| N| Y| N| Y| N|
+Then:                                
+rank_rate = 0                        | X|  |  |  |  |  |  |  |  |  |  |
+rank_rate = 1.00                     |  | X|  |  |  |  |  |  |  |  |  |
+rank_rate = 1.50                     |  |  | X|  |  |  |  |  |  |  |  | 
+rank_rate = 2.00                     |  |  |  | X|  |  |  |  |  |  |  |
+rank_rate = 2.50                     |  |  |  |  | X|  |  |  |  |  |  |
+rank_rate = 3.00                     |  |  |  |  |  | X|  |  |  |  |  |
+rank_rate = 3.50                     |  |  |  |  |  |  | X|  |  |  |  |
+rank_rate = 4.00                     |  |  |  |  |  |  |  | X|  |  |  |
+rank_rate = 4.50                     |  |  |  |  |  |  |  |  | X|  |  |
+rank_rate = 5.00                     |  |  |  |  |  |  |  |  |  | X|  |
+rank_rate = 5.50                     |  |  |  |  |  |  |  |  |  |  | X|
+# .......
+
+
+
+# Profession: Fighter $2/hr., driver $1/hr., cook $1/hr., officer $3/hr.
+rTable 5a: 
+If:                                  | 0|
+checkdate < 20150101                 | Y|
+Then:                                    
+profession_rate = 0                  | X|
+# .......
+
+rTable 5b: 
+If:                                  | 0| 1|
+feature.profession = "fighter"       | Y| Y|
+checkdate < 20150101                 | N| N|
+checkdate < 20160701                 | Y| N|
+Then:                                       
+profession_rate = 2.00               | X|  |
+profession_rate = 2.50               |  | X| 
+# .......
+
+rTable 5c: 
+If:                                  | 0| 1|
+feature.profession = "driver"        | Y| Y|
+checkdate < 20150101                 | N| N|
+checkdate < 20160701                 | Y| N|
+Then:                                       
+profession_rate = 1.00               | X|  |
+profession_rate = 1.60               |  | X|
+# .......
+
+rTable 5d: 
+If:                                  | 0| 1|
+feature.profession = "cook"          | Y| Y|
+checkdate < 20150101                 | N| N|
+checkdate < 20160701                 | Y| N|
+Then:                                       
+profession_rate = 1.00               | X|  |
+profession_rate = 1.50               |  | X|
+# .......
+
+rTable 5e: 
+If:                                  | 0| 1|
+feature.profession = "officer"       | Y| Y|
+checkdate < 20150101                 | N| N|
+checkdate < 20160701                 | Y| N|
+Then:                                    
+profession_rate = 3.00               | X|  |
+profession_rate = 4.00               |  | X|
+# .......
+
+
+
+# Service: Active $2/hr., Reserve $1/hr, Retired $0/hr.
+rTable 6: 
+If:                                  | 0| 1| 2| 3| 4| 5|
+feature.service = "active"           | -| Y| Y| -| -| -|
+feature.service = "reserve"          | -| -| -| Y| Y| -|
+feature.service = "retired"          | -| -| -| -| -| Y|
+checkdate < 20150101                 | Y| N| N| N| N| -|
+checkdate < 20160701                 | -| Y| N| Y| N| -|
+Then:                                                   
+service_rate = 0                     | X|  |  |  |  | X|
+service_rate = 2.00                  |  | X|  |  |  |  |
+service_rate = 2.50                  |  |  | X|  |  |  |
+service_rate = 1.00                  |  |  |  | X|  |  |
+service_rate = 1.50                  |  |  |  |  | X|  |
+# .......
+
+
+
+# Unit: HQ $1/hr., paratroopers, marines, infantry $2/hr.
+rTable 7: 
+If:                                  | 0| 1| 2| 3| 4|
+feature.unit = "HQ"                  | -| Y| Y| -| -|
+OtherUnit = 1                        | -| -| -| Y| Y|
+checkdate < 20150101                 | Y| N| N| N| N|
+checkdate < 20160701                 | -| Y| N| Y| N|
+Then:                                                
+unit_rate = 0                        | X|  |  |  |  |
+unit_rate = 1.00                     |  | X|  |  |  |
+unit_rate = 1.50                     |  |  | X|  |  |
+unit_rate = 2.00                     |  |  |  | X|  |
+unit_rate = 2.50                     |  |  |  |  | X|
+# .......
+
+Attribute: OtherUnit  
+Equals: 1 if feature.unit in ["paratroopers", "marines", "infantry"] else 0
+
+
+# Combat: yes $5/hr., no $0/hr.
+rTable 8: 
+If:                                  | 0| 1| 2| 3|
+feature.combat = "yes"               | -| Y| Y| -|
+feature.combat = "no"                | -| -| -| Y|
+checkdate < 20150101                 | Y| N| N| -|
+checkdate < 20160701                 | -| Y| N| -|
+Then:                                             
+combat_rate = 0                      | X|  |  | X|
+combat_rate = 5.00                   |  | X|  |  |
+combat_rate = 5.50                   |  |  | X|  |
+# .......
+
+
+
+########################### Database views ###########################
+
+Database_view: soldier
+With_attributes: id, name, yearmonth_start, yearmonth_end
+Query:
+ SELECT id, name, yearmonth_start, yearmonth_end
+  FROM soldier
+ LIMIT 1 OFFSET %s
+With_arguments: soldier.auto_index
+
+
+Database_view: feature
+With_attributes: base, rank, profession, service, unit, combat
+Query:
+WITH input_date AS (SELECT '%s' AS refdate)
+SELECT b.description AS base,
+       r.description AS rank,
+       p.description AS profession,
+       serv.description AS service,
+       u.description AS unit,
+       cb.description AS combat
+  FROM soldier s
+       LEFT JOIN base_contract bc ON s.id = bc.soldierid AND 
+             (SELECT refdate FROM input_date) BETWEEN bc.date_from AND COALESCE(bc.date_to,'9999-12-31') 
+       LEFT JOIN base b ON bc.type = b.id
+       LEFT JOIN rank_contract rc ON s.id = rc.soldierid AND 
+             (SELECT refdate FROM input_date) BETWEEN rc.date_from AND COALESCE(rc.date_to,'9999-12-31') 
+       LEFT JOIN rank r ON rc.type = r.id
+       LEFT JOIN profession_contract pc ON s.id = pc.soldierid AND 
+             (SELECT refdate FROM input_date) BETWEEN pc.date_from AND COALESCE(pc.date_to,'9999-12-31') 
+       LEFT JOIN profession p ON pc.type = p.id
+       LEFT JOIN service_contract sc ON s.id = sc.soldierid AND 
+             (SELECT refdate FROM input_date) BETWEEN sc.date_from AND COALESCE(sc.date_to,'9999-12-31') 
+       LEFT JOIN service serv ON sc.type = serv.id
+       LEFT JOIN unit_contract uc ON s.id = uc.soldierid AND 
+             (SELECT refdate FROM input_date) BETWEEN uc.date_from AND COALESCE(uc.date_to,'9999-12-31') 
+       LEFT JOIN unit u ON uc.type = u.id
+       LEFT JOIN combat_contract cc ON s.id = cc.soldierid AND 
+             (SELECT refdate FROM input_date) BETWEEN cc.date_from AND COALESCE(cc.date_to,'9999-12-31') 
+       LEFT JOIN combat cb ON cc.type = cb.id
+ WHERE s.id = %s  
+With_arguments: reference_date, soldier.id
+
+
+
+########################### GoalAttributes ###########################
+
+GoalAttribute: NextSoldier
+Repeat_until:  Finished
+
+Case: Finished
+Print: "End!"
+
+Case: Selected 
+Print: "Overview of pay rates for soldier %s. %s over the period: %s-%s:"  soldier.id soldier.name soldier.yearmonth_start soldier.yearmonth_end 
+>>: current_pay_rate = -1.00         # 
+
+
+GoalAttribute: EvalYear
+Repeat_until:  Finished
+
+Case: Finished 
+Print: "---------------------------------------------------------------------------" 
+
+Case: Selected
+Print: "#REM# -  " 
+   
+
+GoalAttribute: EvalMonth
+Repeat_until: Finished
+
+Case: Finished
+Print: "#REM# -  "
+
+Case: Skip
+Print: "#REM# -  "
+
+Case: NoPayRate
+Print: "%s : total payrate = 0 (retired) "  fromdate 
+>>: current_pay_rate = 0
+
+Case: NewPayRate
+Print: "%s : total (%s) = Base(%s) + Rank(%s:%s) + Prof(%s:%s) + Service(%s:%s) + Unit(%s:%s) + Combat(%s:%s)" fromdate pay_rate_this_month base_rate feature.rank rank_rate feature.profession profession_rate feature.service service_rate feature.unit unit_rate feature.combat combat_rate
+>>: current_pay_rate = pay_rate_this_month
+
+
+
+
+
+

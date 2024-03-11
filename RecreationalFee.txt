@@ -1,0 +1,100 @@
+
+
+
+
+
+Table 0: Recreational Fee
+If:                                     | 0| 1| 2| 3| 4|
+'Policy: Special treatment of seniors'  | Y| Y| Y| N| N|
+'senior'                                | Y| N| N| -| -|
+calculatedprice > 0                     | -| Y| N| Y| N|
+Then:                                             
+recreational_fee is special(senior)     | X|  |  |  |  |
+recreational_fee is regular             |  | X|  | X|  |
+recreational_fee is not_determined      |  |  | X|  | X|
+# .......
+
+attribute: calculatedprice
+summation_of: weekdayprice + weekend_off_price + weekend_peak_price
+
+Proposition: 'Policy: Special treatment of seniors'
+Askable_using: "**?" 
+
+
+
+Table 1: Senior
+If:                                     | 0| 1|
+age >= 65                               | Y| N|                          
+Then:
+'senior'                                | X|  |
+# .......  
+
+Attribute: age
+Askable_using: "What is the years of age of the recreationist?"
+
+
+
+Table 2: weekdayprice
+If:                                     | 0| 1| 2| 3|
+moment_of_usage is weekday              | Y| Y| Y| N|               
+usage_time <  60                        | Y| N| N| -|
+usage_time < 120                        | -| Y| N| -|
+Then: 
+weekdayprice = 2                        | X|  |  |  |
+weekdayprice = 3                        |  | X|  |  |
+weekdayprice = 5                        |  |  | X|  |
+# .......
+
+Attribute: moment_of_usage
+Askable_using: "What is the moment of usage?"
+Attribute: usage_time
+Askable_using: "How long (in minutes)?"
+
+Table 3: weekend_off_price
+If:                                     | 0| 1| 2| 3|
+moment_of_usage is weekend_off_hours    | Y| Y| Y| N|           
+usage_time <  60                        | Y| N| N| -|
+usage_time < 120                        | -| Y| N| -|
+Then:                                   
+weekend_off_price = 3                   | X|  |  |  |
+weekend_off_price = 5                   |  | X|  |  |
+weekend_off_price = 8                   |  |  | X|  |
+# .......
+
+
+Table 4: weekend_peak_price
+If:                                     | 0| 1| 2| 3|
+moment_of_usage is weekend_peak_hours   | Y| Y| Y| N|            
+usage_time <  60                        | Y| N| N| -|
+usage_time < 120                        | -| Y| N| -|
+Then:                                   
+weekend_peak_price = 8                  | X|  |  |  |
+weekend_peak_price = 10                 |  | X|  |  |
+weekend_peak_price = 15                 |  |  | X|  |
+# .......
+
+GoalAttribute: recreational_fee
+Case: special(senior)
+Print: "---------------------------------------------------"                   
+Print: "No recreational fee because it's a senior."
+Print: "---------------------------------------------------"              
+
+Case: regular
+Print: "--------------------------------------------------------------"                  
+Print: "Recreational_fee is: %s." calculatedprice
+Print: "Based on:" 
+Print: "Charge for a weekday: %s." weekdayprice
+Print: "Charge for a_weekend during off ours: %s." weekend_off_price
+Print: "Charge for a_weekend during peak ours: %s." weekend_peak_price
+Print: "--------------------------------------------------------------"
+
+Case: not_determined
+Print: "---------------------------------------------------"                   
+Print: "Recreational_fee could not be determined"
+Print: "---------------------------------------------------"           
+
+
+
+
+
+

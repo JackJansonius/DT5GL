@@ -1,0 +1,170 @@
+
+
+
+SQLite_database: "Database/Pay_as_you_GO.sqlite3"
+
+Table 0: 
+If:                                              | 0| 1|
+'Next Client'                                    | Y| N|
+Then:                                                
+Report is finished                               |  | X|
+# .......
+
+
+Proposition: 'Next Client'
+Obtain_instance_from_database_view: Client
+
+
+Database_view: Client
+With_attributes:
+Name, Input1, Input2, Input3
+Query:
+SELECT Name, Input1, Input2, Input3
+  FROM Client
+ LIMIT 1 OFFSET %s  
+With_arguments: Client.auto_index   
+
+
+Table 1: Payments
+If:                                         | 0| 1|
+units_in_all_tiers > 0                      | Y| N|
+Then:
+Report is alltiers                          | X|  |
+Report is notier                            |  | X|
+# .......
+
+Attribute: units_in_all_tiers 
+Equals: units_in_tier1 + units_in_tier2 + units_in_tier3
+
+Attribute: TotalUnitsAtStartLastHour   Type: Integer 
+Equals: input1 - input3
+
+Attribute: Start                       Type: Integer      
+Equals: End - input3
+
+Attribute: FreeUnitsAtStartLastHour    Type: Integer 
+Equals: max(Free_Units - TotalUnitsAtStartLastHour, 0)
+
+Table 2: Units in tier 1
+If:                                    | 0| 1| 2|
+Start > Tier_2                         | Y| N| N|
+End > Tier_2                           | -| Y| N|
+Then:
+units_in_tier1_bc = 0                  | X|  |  |
+units_in_tier1_bc = Tier_2 - Start     |  | X|  |
+units_in_tier1_bc = End - Start        |  |  | X|
+# .......
+bc=before correction with free units
+
+Table 2a: correct tier1 with free units
+If:                                                            | 0| 1|
+units_in_tier1_bc <= FreeUnitsAtStartLastHour                  | Y| N|
+Then: 
+units_in_tier1 = 0                                             | X|  |
+units_in_tier1 = units_in_tier1_bc - FreeUnitsAtStartLastHour  |  | X| 
+# .......
+
+# Alternative to table 2a:
+# Attribute: units_in_tier1
+# Equals: max(units_in_tier1_bc - FreeUnitsAtStartLastHour, 0)
+
+
+Table 3: Units in tier 2
+If:                                    | 0| 1| 2| 3| 4| 5|
+Start > Tier_3                         | Y| N| N| N| N| N|
+Start > Tier_2                         | -| Y| Y| N| N| N|
+End > Tier_3                           | -| Y| N| Y| N| N|
+End > Tier_2                           | -| -| -| -| Y| N|
+Then:
+units_in_tier2 = Tier_3 - Tier_2       |  |  |  | X|  |  |
+units_in_tier2 = Tier_3  - Start       |  | X|  |  |  |  |
+units_in_tier2 = End - Tier_2          |  |  |  |  | X|  |
+units_in_tier2 = End - Start           |  |  | X|  |  |  |
+units_in_tier2 = 0                     | X|  |  |  |  | X|
+# .......
+
+ 
+
+Table 4: Units in tier 3
+If:                                    | 0| 1| 2|
+Start > Tier_3                         | Y| N| N|
+End > Tier_3                           | -| Y| N|
+Then:
+units_in_tier3 = End - Start           | X|  |  |
+units_in_tier3 = End - Tier_3          |  | X|  |
+units_in_tier3 = 0                     |  |  | X|
+# .......
+
+
+Attribute: Free_Units  Type: Integer 
+Equals: 10000
+Attribute: Tier_2      Type: Integer 
+Equals: 20000
+Attribute: Tier_3      Type: Integer
+Equals: 50000
+
+Attribute: input1      Type: Integer 
+Obtain_value_from_database_view: Client.Input1
+
+Attribute: End         Type: Integer 
+Obtain_value_from_database_view: Client.Input2
+
+Attribute: input3      Type: Integer
+Obtain_value_from_database_view: Client.Input3
+
+
+GoalAttribute: Report
+Repeat_until: finished
+
+Case: finished
+Print: "Finished"
+
+Case: alltiers
+Print: "Naam client..: %s"    Client.Name
+Print: "Number of units consumed in the last hour: %s" units_in_all_tiers
+Print: "Units in tier 1: %s" units_in_tier1  
+Print: "Units in tier 2: %s" units_in_tier2  
+Print: "Units in tier 3: %s" units_in_tier3   
+Print: "********* Derived data from input *********"
+Print: "All units to start hour...........: %s" TotalUnitsAtStartLastHour
+Print: "Units in month to start hour......: %s" Start
+Print: "Free units remaining at start hour: %s" FreeUnitsAtStartLastHour
+Print: "-------------------------------------------" 
+Print: "  " 
+
+Case: notier
+Print: "Naam client..: %s"    Client.Name
+Print: "No units used in the last hour" 
+Print: "-------------------------------------------" 
+Print: "  " 
+
+--Initial_database_setup: delete_clients
+Query:
+    DELETE FROM Client
+End_Query
+
+--Initial_database_setup: insert_new_borrowers
+Query:
+    INSERT INTO Client 
+     (Name, Input1, Input2, Input3) 
+    VALUES
+    ('TC1',       2000,   2000,    160),
+    ('TC2',      10200,  10200,    350),
+    ('TC3',      25600,   8678,   1234),
+    ('TC4',       1500,   1500,   1500),
+    ('TC5',      22000,  22000,  20500),
+    ('TC6',      32500,  32500,  10500),
+    ('TC7',      55600,  20500,    700),
+    ('TC8',      85600,  25700,   1500),
+    ('TC9',     120258,  60390,   2350),
+    ('TC10',    120000, 120000, 120000)
+End_Query
+
+
+
+
+
+
+
+
+

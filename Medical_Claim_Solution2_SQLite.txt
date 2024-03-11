@@ -1,0 +1,133 @@
+
+
+SQLite_database: "Database/ClaimTC.db"
+
+
+Table 0:
+If:                                              | 0| 1|
+'next testcase number selected'                  | Y| N|     
+Then:
+NextTC is Selected                               | X|  |
+NextTC is Finished                               |  | X|
+# .......
+# Repeat until: Finished
+
+Proposition: 'next testcase number selected'
+Obtain_instance_from_database_view: testcase
+
+
+Table 1:
+If:                                              | 0| 1|
+'next code 1 selected'                           | Y| N|     
+Then:
+FirstCode is Selected                            | X|  |
+FirstCode is Finished                            |  | X|
+# .......
+# Repeat until: Finished
+
+Proposition: 'next code 1 selected'
+Obtain_instance_from_database_view: input1
+
+
+Table 2: 
+If:                                              | 0| 1| 2|
+'next code 2 selected'                           | Y| Y| N|               
+'combo present in codes'                         | Y| N| -|                     
+Then:                                                      
+EvalCombo is Reported                            | X|  |  |
+EvalCombo is NotReported                         |  | X|  |                                                   
+EvalCombo is Finished                            |  |  | X|
+# .......
+# Repeat until: Finished
+
+
+Proposition: 'next code 2 selected'
+Obtain_instance_from_database_view: input2
+
+Proposition: 'combo present in codes'
+Obtain_instance_from_database_view: code
+
+Attribute: restricted_input2_index  Type: Integer
+Equals: input1.auto_index + input2.auto_index
+
+
+########################### Database views ###########################
+
+Database_view: testcase
+With_attributes: number
+Query:
+ SELECT distinct tc
+  FROM input
+ LIMIT 1 OFFSET %s
+With_arguments: testcase.auto_index
+
+
+Database_view: input1
+With_attributes: code 
+Query:
+SELECT distinct code
+  FROM input
+ WHERE tc = %s
+ LIMIT 1 OFFSET %s
+With_arguments: testcase.number, input1.auto_index
+
+Database_view: input2
+With_attributes: code 
+Query:
+SELECT distinct code
+  FROM input
+ WHERE tc = %s
+ LIMIT 1 OFFSET %s
+With_arguments:  testcase.number, restricted_input2_index
+
+
+Database_view: code
+With_attributes: column1, column2
+Query:
+SELECT column1, column2
+  FROM icd10codes
+ WHERE column1 = '%s' AND column2 = '%s' 
+       OR
+       column1 = '%s' AND column2 = '%s' 
+ LIMIT 1
+With_arguments: input1.code, input2.code, input2.code, input1.code 
+
+
+
+########################### GoalAttributes ########################### 
+GoalAttribute: NextTC
+Repeat_until: Finished
+
+Case: Finished
+Print: "Finished"
+
+Case: Selected
+Print: "------- Testcase: %s --------------"       testcase.number
+
+GoalAttribute: FirstCode
+Repeat_until: Finished
+
+Case: Finished
+Print: "   "
+
+Case: Selected
+Print: "#REM# -- print nothing"
+
+GoalAttribute: EvalCombo
+Repeat_until: Finished
+
+Case: Finished
+Print: "#REM# -- print nothing"
+
+Case: NotReported
+Print: "#REM# -- print nothing"
+
+Case: Reported
+Print: "Diagnosis Code [%s] cannot be reported together with [%s]" input1.code input2.code
+
+
+
+
+
+
+

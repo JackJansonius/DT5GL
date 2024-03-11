@@ -1,0 +1,87 @@
+
+
+
+
+Table 0: 
+If:                                            | 0| 1| 2| 3| 4| 5|
+'Volgende Client?'                             | Y| Y| Y| Y| Y| N|
+Stap1_symptomen >= Minimum_voor_PCR_tests      | Y| N| N| N| N| -|
+Stap1_symptomen > 0                            | -| Y| Y| N| N| -|
+Stap2_symptoom  = 1                            | -| Y| N| Y| N| -|
+Then:                                                          
+Actie is AlleClientenVerwerkt                  |  |  |  |  |  | X|
+Actie is PCR_test                              | X| X|  |  |  |  |
+Actie is InQuarantaine                         |  |  | X| X|  |  |
+Actie is AllesOK                               |  |  |  |  | X|  |
+# .......
+
+
+Proposition: 'Volgende Client?'
+Askable_using: "Volgende Client?"
+
+Attribute: Stap1_symptomen  
+Equals: Niezen + Hoesten
+
+Attribute: Niezen         Type: Integer
+Askable_using: "Niest de client (0=Nee, 1=Ja)?"
+Attribute: Hoesten        Type: Integer 
+Askable_using: "Hoest de client (0=Nee, 1=Ja)?"
+
+Attribute: Minimum_voor_PCR_tests      Type: Integer
+Equals: 2
+
+Attribute: Stap2_symptoom
+Equals: Koorts
+
+Table 1: 
+If:                                            | 0| 1| 2| 3|
+Leeftijd >= 10                                 | Y| Y| N| N|
+Temperatuur >= 38.0                            | Y| N| -| -|
+Temperatuur >= 37.2                            | -| -| Y| N|
+Then: 
+Koorts = 1                                     | X|  | X|  |
+Koorts = 0                                     |  | X|  | X|
+# .......
+
+
+Attribute: Leeftijd
+Askable_using: "Wat is de leeftijd?"
+Attribute: Temperatuur 
+Askable_using: "Wat is de temperatuur?"
+
+
+GoalAttribute: Actie
+Repeat_until: AlleClientenVerwerkt
+
+Case: AlleClientenVerwerkt
+Print: "Klaar met verwerken!"
+
+Case: PCR_test
+Print: "Resultaat: doe een PCR-test!"
+Print: "Aantal symptomen stap 1: %s. "   Stap1_symptomen.getvalue  
+Print: "Aantal symptomen stap 2: %s. "   Stap2_symptoom.getvalue
+Print: "------------------------------------"      
+  
+
+Case: InQuarantaine  
+Print: "Resultaat: ga in Quarantaine." 
+Print: "Aantal symptomen stap 1: %s. "   Stap1_symptomen.getvalue  
+Print: "Aantal symptomen stap 2: %s. "   Stap2_symptoom.getvalue
+Print: "------------------------------------"      
+ 
+
+Case: AllesOK
+Print: "Resultaat: geen actie vereist.."
+Print: "Aantal symptomen stap 1: %s. "   Stap1_symptomen.getvalue  
+Print: "Aantal symptomen stap 2: %s. "   Stap2_symptoom.getvalue
+Print: "------------------------------------"      
+
+
+
+
+
+
+
+
+
+

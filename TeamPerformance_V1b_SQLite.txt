@@ -1,0 +1,51 @@
+
+
+
+SQLite_database: "Database/TeamPerformance.sqlite3"
+
+rTable 0: 
+If:                                            | 0|
+'Get TopScore'                                 | Y|
+Then:                                              
+Action is Display_TopScore                     | X|
+# .......
+
+Proposition: 'Get TopScore'
+Obtain_instance_from_database_view: TopScore
+
+
+Database_view: TopScore
+With_attributes:
+Teamid, Teamname, TotalPoints
+Query:
+SELECT a.Teamid, b.Name, 
+       Sum(CASE WHEN a.Efficiency = 'best' THEN 5 
+                WHEN a.Efficiency = 'better' THEN 3 
+                WHEN a.Efficiency = 'good' THEN 2 
+                WHEN a.Efficiency = 'bad' THEN -2 
+                WHEN a.Efficiency = 'worst' THEN -5 
+           END) AS TotalPoints
+  FROM Game AS a
+       JOIN
+       Team AS b on (a.TeamId = b.Id)
+ GROUP BY Teamid
+ ORDER BY TotalPoints DESC  
+ LIMIT 1
+End_Query  
+
+
+GoalAttribute: Action
+
+Case: Display_TopScore
+Print: "Winner is team %s with %s points!"  TopScore.Teamname TopScore.TotalPoints
+
+
+
+
+
+
+
+
+
+
+

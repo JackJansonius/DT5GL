@@ -1,0 +1,109 @@
+
+Table 0: Payments
+If:                                         | 0| 1| 2| 3| 4| 5| 6|
+units_in_tier3 > 0                          | Y| Y| Y| N| N| N| N| 
+units_in_tier2 > 0                          | Y| Y| N| Y| Y| N| N|
+units_in_tier1 > 0                          | Y| N| -| Y| N| Y| N|
+Then:
+report is tier3+tier2+tier1                 | X|  |  |  |  |  |  |
+report is tier3+tier2                       |  | X|  |  |  |  |  |
+report is tier3                             |  |  | X|  |  |  |  |
+report is tier2+tier1                       |  |  |  | X|  |  |  |
+report is tier2                             |  |  |  |  | X|  |  |
+report is tier1                             |  |  |  |  |  | X|  |  
+report is notier                            |  |  |  |  |  |  | X|
+'show derived data from input'              | X| X| X| X| X| X| X|
+# .......
+
+# with thanks to dr. Bob Moore's excellent analysis:
+# D =A7 - C7 
+# E =B7 - C7 
+# F =MAX(Free_Units-D7, 0) 
+# G =IF(C7 - I7 - H7 < F7, 0, C7 - I7 - H7 - F7)
+# H =IF(E7 > Tier_2, C7 - I7, IF(B7 > Tier_2, B7 - I7 - Tier_2, 0))
+# I =IF(E7 > Tier_3, C7, IF(B7 > Tier_3, B7 -Tier_3, 0)) 
+
+Attribute: TotalUnitsAtStartLastHour   Type: Integer 
+Equals: input1 - input3
+
+Attribute: UnitsInMonthAtStartLastHour        Type: Integer
+Equals: input2 - input3
+
+Attribute: FreeUnitsAtStartLastHour    Type: Integer 
+Equals: max(Free_Units - TotalUnitsAtStartLastHour, 0)
+
+Attribute: units_in_tier1   
+Equals: 0 if input3 - units_in_tier3 - units_in_tier2 < FreeUnitsAtStartLastHour \
+        else input3 - units_in_tier3 - units_in_tier2 - FreeUnitsAtStartLastHour
+
+Attribute: units_in_tier2
+Equals: input3 - units_in_tier3 if UnitsInMonthAtStartLastHour > Tier_2   \ 
+        else input2 - units_in_tier3 - Tier_2 if input2 > Tier_2          \
+        else 0                 
+
+Attribute: units_in_tier3
+Equals: input3 if UnitsInMonthAtStartLastHour > Tier_3  \
+        else input2 - Tier_3 if input2 > Tier_3         \
+        else 0
+
+Attribute: Free_Units  Type: Integer 
+Equals: 10000
+Attribute: Tier_2      Type: Integer 
+Equals: 20000
+Attribute: Tier_3      Type: Integer 
+Equals: 50000
+
+Attribute: input1  Type: Integer 
+Askable_using: "Input 1 - all units to end hour?"
+
+Attribute: input2  Type: Integer
+Askable_using: "Input 2 - units in month to end hour?"
+
+Attribute: input3  Type: Integer
+Askable_using: "Input 3 - units in last hour?"
+
+
+GoalAttribute: report
+Case: tier3+tier2+tier1
+Print: "tier3+tier2+tier1" 
+Print: "Units in tier 1: %s" units_in_tier1
+Print: "Units in tier 2: %s" units_in_tier2
+Print: "Units in tier 3: %s" units_in_tier3
+
+Case: tier3+tier2
+Print: "tier3+tier2" 
+Print: "Units in tier 2: %s" units_in_tier2
+Print: "Units in tier 3: %s" units_in_tier3
+
+Case: tier3
+Print: "tier3" 
+Print: "Units in tier 3: %s" units_in_tier3
+
+Case: tier2+tier1
+Print: "tier2+tier1" 
+Print: "Units in tier 1: %s" units_in_tier1
+Print: "Units in tier 2: %s" units_in_tier2
+
+Case: tier2
+Print: "tier2" 
+Print: "Units in tier 2: %s" units_in_tier2
+
+Case: tier1
+Print: "tier1" 
+Print: "Units in tier 1: %s" units_in_tier1
+
+Case: notier
+Print: "notier" 
+
+
+# NB: use .getvalue in a print-statement to suppress backward reasoning. 
+GoalProposition: 'show derived data from input'
+Print: "********* Derived data from input *********"
+Print: "All units to start hour...........: %s" TotalUnitsAtStartLastHour.getvalue
+Print: "Units in month to start hour......: %s" UnitsInMonthAtStartLastHour.getvalue
+Print: "Free units remaining at start hour: %s" FreeUnitsAtStartLastHour.getvalue
+
+
+
+
+

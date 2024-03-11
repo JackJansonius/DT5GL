@@ -1,0 +1,76 @@
+
+
+
+SQLite_database: "Database/TeamPerformance.sqlite3"
+
+Table 0: 
+If:                                            | 0| 1|
+'Next Game to process?'                        | Y| N|
+Then:                                                 
+Action is Process_game                         | X|  |
+Action is Games_processed                      |  | X|
+# .......
+
+Proposition: 'Next Game to process?'
+Obtain_instance_from_database_view: Game
+
+Attribute: Efficiency  Type: Text
+Obtain_value_from_database_view: Game.Efficiency
+
+Attribute: Points      Type: Integer
+Equals:  5 if Efficiency == "best"    \
+   else  3 if Efficiency == "better"  \ 
+   else  2 if Efficiency == "good"    \ 
+   else -2 if Efficiency == "bad"     \
+   else -5 if Efficiency == "worst"   \
+   else 99999
+
+Database_view: Game
+With_attributes:
+Teamid, Efficiency
+Query:
+SELECT Teamid, Efficiency
+  FROM Game
+ LIMIT 1 OFFSET %s  
+With_arguments: Game.auto_index   
+
+Database_view: TopScore
+With_attributes:
+Teamid, Teamname, TotalPoints
+Query:
+SELECT a.Teamid, b.Name, a.TotalPoints
+  FROM Summation AS a
+       INNER JOIN
+       Team AS b on (a.TeamId = b.Id)
+ORDER BY TotalPoints DESC   
+ LIMIT 1   
+End_Query  
+
+
+GoalAttribute: Action
+Repeat_until: Games_processed
+
+Case: Games_processed
+Print: "Winner is team %s with %s points!"  TopScore.Teamname TopScore.TotalPoints
+
+Case: Process_game
+Print: "Efficiency for player is %s so add %s points for team with id: %s " Game.Efficiency  Points  Game.Teamid      
+>SQL:  "UPDATE Summation " 
+-SQL:  "   SET TotalPoints = TotalPoints + %s "       Points
+<SQL:  " WHERE Teamid = %s "                          Game.Teamid
+
+
+Initial_database_setup: make_start_summation
+Query:
+    UPDATE Summation SET TotalPoints = 0
+End_Query
+
+
+
+
+
+
+
+
+
+

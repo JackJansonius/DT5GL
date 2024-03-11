@@ -1,0 +1,886 @@
+
+
+# Simplification of decision tables based on a State Transition Diagram
+# New organ states: 10. I-Declined, 12. TC-Declined, 11. I-Assigned, 13, TC-Assigned 
+
+
+# Organ-states:
+# 1.  I-Available   = Available for individual patients (INITIAL STATE, from other application). <=
+# 2.  I-Offered     = Offered to an individual patient.
+# 10. I-Declined    = Declined by an individual patient. (from other application)                <=
+# 3.  I-Accepted    = Accepted by an individual patient. (from other application)                <=
+# 11. I-Assigned    = Assigned to an individual patient (END STATE). 
+# 4.  TC-Wait       = Fallback
+# 5.  TC-Available  = Available for transplant centers.
+# 6.  TC-Offered    = Offered to a transplant center.
+# 12. TC-Declined   = Declined by a transplant center.   (from other application)                <=
+# 7.  TC-Accepted   = Accepted by a transplant center.   (from other application)                <=
+# 13. TC-Assigned   = Assigned to a transplant center (END STATE).
+# 8.  NotAccepted   = Not accepted by an individual patient or transplant center (END STATE).
+# 9.  NotAvailable  = Not available (INITIAL/END STATE, from other application).                 <=
+# 
+
+
+SQLite_database: "Database/organdonation2.sqlite"
+
+rTable 0: Next organ to handle? 
+If:                                                      | 0|
+'Still organs to handle'                                 | N|
+Then:                                                           
+Action is Organ_handling_finished                        | X|
+# .......
+
+Proposition: 'Still organs to handle'
+Obtain_instance_from_database_view: organ_block
+
+
+rTable 1a: Handle heart if declined by patient first.
+If:                                                      | 0|
+Heart_Status_DB is I-Declined                            | Y|
+Then:                                                        
+Action is Rejection_Heart_by_Patient                     | X|
+# .......
+
+
+
+rTable 1b: Offer a declined or new available heart to an individual patient, a transplant center or a wait for this.
+If:                                                      | 0| 1| 2|
+'Heart is new or declined by patient'                    | Y| Y| Y|
+'Another patient for this organ on Heart Prio List'      | Y| N| N|
+'Wait for the lungs'                                     | -| Y| N|
+Then:                                                            
+Action is Offer_Heart_to_Patient                         | X|  |  |
+Heart_Status_tmp is TC-Wait                              |  | X|  |
+Heart_Status_tmp is TC-Available                         |  |  | X|
+# .......
+
+
+rTable 1c: 
+If:                                                      | 0| 1|
+Heart_Status_DB is I-Available                           | Y| N|
+Heart_Status_DB is I-Declined                            | -| Y|
+Then:                                                           
+'Heart is new or declined by patient'                    | X| X|         
+# .......
+
+Attribute: Heart_Status_DB   
+Obtain_value_from_database_view: organ_block.heart_status
+
+Proposition: 'Another patient for this organ on Heart Prio List'
+Obtain_instance_from_database_view: patient_for_heart
+
+
+rTable 1d: 
+If:                                                      | 0|
+Lung_Status_DB is NotAvailable                           | N|
+Lung_Status_DB is I-Accepted                             | N|
+Lung_Status_DB is I-Assigned                             | N| 
+Then:                                                        
+'Wait for the lungs'                                     | X|
+# .......
+
+
+rTable 1e: Offer the waiting heart to a transplant center, if the lungs are accepted by a patient. 
+If:                                                      | 0|
+Heart_Status_DB is TC-Wait                               | Y|
+Lung_Status_DB  is I-Accepted                            | Y|
+Then:                                                        
+Heart_Status_tmp is TC-Available                         | X|
+# .......
+# NB: The heart cannot be in a waiting state if the lungs are not available within a block. 
+
+
+rTable 1f: Assign an accepted heart to the patient.
+If:                                                      | 0|
+Heart_Status_DB is I-Accepted                            | Y|
+Then:                                                        
+Action is Assign_Heart_to_Patient                        | X|
+# .......
+
+
+rTable 2a : Handle lungs if declined by patient first.
+If:                                                      | 0|
+Lung_Status_DB is I-Declined                             | Y|
+Then:                                                        
+Action is Rejection_Lungs_by_Patient                     | X|
+# .......
+
+
+rTable 2b: Offer declined or new available lungs to an individual patient, a transplant center or a wait for this.
+If:                                                      | 0| 1| 2|
+'Lungs are new or declined by patient'                   | Y| Y| Y|
+'Another patient for this organ on Lung Prio List'       | Y| N| N|
+'Wait for the heart'                                     | -| Y| N|
+Then:                                                            
+Action is Offer_Lungs_to_Patient                         | X|  |  |
+Lung_Status_tmp is TC-Wait                               |  | X|  |
+Lung_Status_tmp is TC-Available                          |  |  | X|
+# .......
+
+
+rTable 2c: 
+If:                                                      | 0| 1|
+Lung_Status_DB is I-Available                            | Y| N|
+Lung_Status_DB is I-Declined                             | -| Y|
+Then:                                                           
+'Lungs are new or declined by patient'                   | X| X|         
+# .......
+
+
+Attribute: Lung_Status_DB   
+Obtain_value_from_database_view: organ_block.lung_status
+
+Proposition: 'Another patient for this organ on Lung Prio List'
+Obtain_instance_from_database_view: patient_for_lung
+
+
+rTable 2d: 
+If:                                                      | 0|
+Heart_Status_DB is NotAvailable                          | N|
+Heart_Status_DB is I-Accepted                            | N|
+Heart_Status_DB is I-Assigned                            | N| 
+Then:                                                        
+'Wait for the heart'                                     | X|
+# .......
+
+
+
+rTable 2e: Offer the waiting lungs to a transplant center, if the heart is accepted by a patient.
+If:                                                      | 0|
+Lung_Status_DB  is TC-Wait                               | Y|
+Heart_Status_DB is I-Accepted                            | Y|
+Then:                                                        
+Lung_Status_tmp is TC-Available                          | X|
+# .......
+# NB: The lungs cannot be in a waiting state if the heart is not available within a block. 
+
+
+rTable 2f: Assign accepted lungs to the patient.
+If:                                                      | 0|
+Lung_Status_DB is I-Accepted                             | Y|
+Then:                                                        
+Action is Assign_Lungs_to_Patient                        | X|
+# .......
+
+
+rTable 3: Offer a heart-lung block to a transplant center for the first time (fallback-scenario)
+If:                                              | 0| 1| 2|
+Heart_Status_tmp is TC-Wait                      | Y| Y| N|
+Lung_Status_tmp  is TC-Wait                      | Y| -| Y|
+Heart_Status_DB  is TC-Wait                      | -| -| Y|
+Lung_Status_DB   is TC-Wait                      | -| Y| -|
+Then:                                                         
+'Heart-Lung Block to TC for the first time'      | X| X| X|
+# .......
+
+
+
+rTable 4: Handle single organ or heart-lung block if declined by TC first.
+If:                                              | 0| 1| 2|
+Heart_Status_DB is TC-Declined                   | Y| Y| N|
+Lung_Status_DB  is TC-Declined                   | Y| N| Y|
+Then:                                             
+Action is Rejection_Heart/Lung-block_by_TC       | X|  |  |
+Action is Rejection_Heart_by_TC                  |  | X|  |
+Action is Rejection_Lungs_by_TC                  |  |  | X|
+# .......
+
+
+rTable 5: Heart-Lung Block to TC for the first time.
+If:                                              | 0| 1|
+'Heart-Lung Block to TC for the first time'      | Y| Y|  
+'Another Transplant Center on TC list'           | Y| N|
+Then:                                                
+Action is Offer_Heart/Lung-block_to_TC/1         | X|  |
+Action is Heart/Lung-block_not_accepted          |  | X|
+# .......
+
+Proposition: 'Another Transplant Center on TC list'
+Obtain_instance_from_database_view: transplant_center
+
+
+
+rTable 6: Declined Heart-Lung Block to next TC or not accepted
+If:                                              | 0| 1|
+Heart_Status_DB is TC-Declined                   | Y| Y|
+Lung_Status_DB  is TC-Declined                   | Y| Y|
+'Another TC for this heart on TC list'           | Y| N|
+Then:                                             
+Action is Offer_Heart/Lung-block_to_TC/2         | X|  |
+Action is Heart/Lung-block_not_accepted          |  | X|
+# .......
+
+Proposition: 'Another TC for this heart on TC list'
+Obtain_instance_from_database_view: TC_for_heart
+
+
+rTable 7: Heart as single organ: new for TC or declined by TC. 
+If:                                              | 0| 1| 2| 3| 
+Heart_Status_tmp is TC-Available                 | Y| Y| N| N|
+Heart_Status_DB  is TC-Declined                  | -| -| Y| Y|
+Lung_Status_DB   is TC-Declined                  | -| -| N| N|
+'Another TC for this heart on TC list'           | Y| N| Y| N|
+Then:                                             
+Action is Offer_single_Heart_to_TC               | X|  | X|  |
+Action is Heart_not_accepted                     |  | X|  | X|
+# .......
+# TC-Available implies single organ: the other organ is NotAvailable, I-Accepted, I-Assigned
+
+
+
+rTable 8: Lungs as single organ: new for TC or declined by TC.  
+If:                                              | 0| 1| 2| 3| 
+Lung_Status_tmp is TC-Available                  | Y| Y| N| N|
+Heart_Status_DB is TC-Declined                   | -| -| N| N|
+Lung_Status_DB  is TC-Declined                   | -| -| Y| Y|
+'Another TC for these lungs on TC list'          | Y| N| Y| N|
+Then:                                             
+Action is Offer_single_Lungs_to_TC               | X|  | X|  |
+Action is Lungs_not_accepted                     |  | X|  | X|
+# .......
+# TC-Available implies single organ: the other organ is NotAvailable, I-Accepted, I-Assigned
+
+
+Proposition: 'Another TC for these lungs on TC list'
+Obtain_instance_from_database_view: TC_for_lungs
+
+
+rTable 9: Assign accepted organs to the related TC. 
+If:                                              | 0| 1| 2|
+Heart_Status_DB is TC-Accepted                   | Y| Y| N|
+Lung_Status_DB  is TC-Accepted                   | Y| N| Y|
+Then:                                             
+Action is Assign_Heart/Lung-block_to_TC          | X|  |  | 
+Action is Assign_single_Heart_to_TC              |  | X|  |
+Action is Assign_single_Lungs_to_TC              |  |  | X|
+# .......
+
+
+rTable 10: Only the heart or the lungs come into a wait state (fallback scenario)
+If:                                              | 0| 1|
+'Heart-Lung Block to TC for the first time'      | N| N|
+Heart_Status_tmp is TC-Wait                      | Y| N|
+Lung_Status_tmp  is TC-Wait                      | N| Y|
+Then:
+Action is Heart_waits_for_TC                     | X|  |
+Action is Lungs_wait_for_TC                      |  | X| 
+# .......
+
+
+
+
+################################# Database views #################################
+Database_view: organ_block
+With_attributes:
+organ_block_id,donorid,name,heart_status,lung_status,organ_availability_date
+Query:
+SELECT a.organ_block_id,
+       b.donorid,
+       b.name,
+       c.status AS heart_status,
+       d.status AS lung_status,
+       a.organ_availability_date
+  FROM organ_block AS a
+       INNER JOIN
+       donor AS b ON (a.donorid = b.donorid)
+       INNER JOIN
+       organstatus AS c ON (a.heart_status = c.statusid)
+       INNER JOIN
+       organstatus AS d ON (a.lung_status = d.statusid)
+ WHERE c.status IN ("I-Available", "I-Accepted", "I-Declined", "TC-Accepted", "TC-Declined") OR
+       d.status IN ("I-Available", "I-Accepted", "I-Declined", "TC-Accepted", "TC-Declined")
+ ORDER BY organ_availability_date ASC
+ LIMIT 1
+End_Query
+
+
+
+Database_view: patient_for_heart
+With_attributes: patient_id
+Query:
+SELECT patient_id
+  FROM high_prio_heart_list AS a
+ WHERE availability_id = 1 AND 
+       patient_id NOT IN (
+           SELECT patientid 
+             FROM heart_offer AS b
+            WHERE b.patientid = a.patient_id 
+              AND b.organ_block_id = %s 
+              AND b.response_id = 1)
+ ORDER BY priority DESC,
+          placement_date ASC
+ LIMIT 1
+With_arguments: organ_block.organ_block_id
+
+
+
+Database_view: patient_for_lung
+With_attributes: patient_id
+Query:
+SELECT patient_id
+  FROM high_prio_lung_list AS a
+ WHERE availability_id = 1 AND 
+       patient_id NOT IN (
+           SELECT patientid 
+             FROM lung_offer AS b
+            WHERE b.patientid = a.patient_id 
+              AND b.organ_block_id = %s 
+              AND b.response_id = 1)
+ ORDER BY priority DESC,
+          placement_date ASC
+ LIMIT 1
+With_arguments: organ_block.organ_block_id
+
+
+
+Database_view: transplant_center
+With_attributes: transplant_center_id, name, tc_availability_id
+Query:
+SELECT transplant_center_id,
+       name,
+       tc_availability_id
+  FROM transplant_center
+  WHERE  tc_availability_id = 1
+  LIMIT 1
+End_Query
+
+
+Database_view: TC_for_heart
+With_attributes: transplant_center_id, name, tc_availability_id
+Query:
+SELECT transplant_center_id,
+       name,
+       tc_availability_id
+  FROM transplant_center AS a
+ WHERE tc_availability_id = 1
+   AND transplant_center_id NOT IN (
+          SELECT transplant_center_id
+            FROM heart_offer AS b
+           WHERE b.transplant_center_id = a.transplant_center_id
+             AND b.organ_block_id = %s 
+             AND b.response_id = 1)
+  LIMIT 1
+With_arguments: organ_block.organ_block_id
+
+
+Database_view: TC_for_lungs
+With_attributes: transplant_center_id, name, tc_availability_id
+Query:
+SELECT transplant_center_id,
+       name,
+       tc_availability_id
+  FROM transplant_center AS a
+ WHERE tc_availability_id = 1
+   AND transplant_center_id NOT IN (
+          SELECT transplant_center_id
+            FROM lung_offer AS b
+           WHERE b.transplant_center_id = a.transplant_center_id
+             AND b.organ_block_id = %s 
+             AND b.response_id = 1)
+  LIMIT 1
+With_arguments: organ_block.organ_block_id
+
+# availability_id    = 1 (AVAILABLE) 2 (Temp Unavailable) 4 (Def Unavailable)
+# tc_availability_id = 1 (AVAILABLE) 2 = not available
+# response_id        = 1 (DECLINED)  2 = ACCEPTED
+
+
+################################# GoalAttributes ################################# 
+#Overview Actions:
+#Case: No_Organs_To_Offer
+#Case: Rejection_Heart_by_Patient           
+#Case: Rejection_Lungs_by_Patient  
+#Case: Offer_Heart_to_Patient              
+#Case: Offer_Lungs_to_Patient              
+#Case: Assign_Heart_to_Patient
+#Case: Assign_Lungs_to_patient
+                                           
+#Case: Heart_waits_for_TC                  
+#Case: Lungs_wait_for_TC                   
+
+#Case: Rejection_Heart_by_TC
+#Case: Rejection_Lungs_by_TC
+#Case: Rejection_Heart/Lung-block_by_TC
+
+#Case: Offer_single_Heart_to_TC            
+#Case: Offer_single_Lungs_to_TC            
+#Case: Offer_Heart/Lung-block_to_TC/1
+#Case: Offer_Heart/Lung-block_to_TC/2        
+#Case: Assign_single_Heart_to_TC           
+#Case: Assign_single_Lungs_to_TC           
+#Case: Assign_Heart/Lung-block_to_TC       
+#Case: Heart_not_accepted                  
+#Case: Lungs_nog_accepted                  
+#Case: Heart/Lung-block_not_accepted       
+
+
+GoalAttribute: Action
+Repeat_until: Organ_handling_finished 
+MultiValued_until: Organ_handling_finished 
+
+
+Case: Organ_handling_finished 
+Print: "============================Result========================================="
+Print: "No organs to handle anymore. "
+Print: "The organ handling service has been finished"
+Print: "==========================================================================="
+
+
+Case: Rejection_Heart_by_Patient
+Print: "> The heart in the organ block %s from donor %s is declined by the patient." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE high_prio_heart_list "
+-SQL:  "   SET availability_id = 1 "
+-SQL:  " WHERE patient_id = (SELECT patientid FROM heart_offer  "
+-SQL:  "                      WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                        AND responsedate is NULL) "
+
+>SQL:  "UPDATE heart_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 1   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "             
+
+
+Case: Rejection_Lungs_by_Patient
+Print: "> The lungs in the organ block %s from donor %s are declined by the patient." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE high_prio_lung_list "
+-SQL:  "   SET availability_id = 1 "
+-SQL:  " WHERE patient_id = (SELECT patientid FROM lung_offer  "
+-SQL:  "                      WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                        AND responsedate is NULL) "
+
+>SQL:  "UPDATE lung_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 1   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "           
+
+
+Case: Offer_Heart_to_Patient
+Print: "Offer the heart to patient %s on the heart prio list" patient_for_heart.patient_id
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 2 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, patientid, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          patient_for_heart.patient_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE high_prio_heart_list SET availability_id = 2 "
+<SQL:  "WHERE patient_id = %s"   patient_for_heart.patient_id
+
+
+Case: Offer_Lungs_to_Patient
+Print: "Offer the lungs to patient %s on the lung prio list" patient_for_lung.patient_id
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET lung_status = 2 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO lung_offer (organ_block_id, patientid, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          patient_for_lung.patient_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE high_prio_lung_list SET availability_id = 2 "
+<SQL:  "WHERE patient_id = %s"   patient_for_lung.patient_id
+
+
+
+Case: Assign_Heart_to_Patient
+Print: "The heart in the organ block %s from donor %s is assigned to the patient." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE organ_block SET heart_status = 11 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "UPDATE high_prio_heart_list "
+-SQL:  "   SET availability_id = 4 "
+-SQL:  " WHERE patient_id = (SELECT patientid FROM heart_offer  "
+-SQL:  "                      WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                        AND responsedate is NULL) "
+
+>SQL:  "UPDATE heart_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 2   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "      
+
+
+Case: Assign_Lungs_to_Patient
+Print: "The lungs in the organ block %s from donor %s are assigned to the patient." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET lung_status = 11 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "UPDATE high_prio_lung_list "
+-SQL:  "   SET availability_id = 4 "
+-SQL:  " WHERE patient_id = (SELECT patientid FROM lung_offer  "
+-SQL:  "                      WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                        AND responsedate is NULL) "
+
+>SQL:  "UPDATE lung_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 2   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "        
+
+
+Case: Heart_waits_for_TC
+Print: "The heart is waiting now for a block-offer to a transplant center."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 4 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: Lungs_wait_for_TC
+Print: "The lungs are waiting now for a block-offer to a transplant center."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET lung_status = 4 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: Rejection_Heart_by_TC
+Print: "> The heart in the organ block %s from donor %s is declined by the transplant center." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE transplant_center "
+-SQL:  "   SET tc_availability_id = 1 "
+-SQL:  " WHERE transplant_center_id = (SELECT transplant_center_id FROM heart_offer  "
+-SQL:  "                                WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                                  AND responsedate is NULL) "
+
+>SQL:  "UPDATE heart_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 1   "           
+-SQL:  " WHERE organ_block_id =  %s "                                         organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "             
+
+
+Case: Rejection_Lungs_by_TC
+Print: "> The lungs in the organ block %s from donor %s is declined by the transplant center." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE transplant_center "
+-SQL:  "   SET tc_availability_id = 1 "
+-SQL:  " WHERE transplant_center_id = (SELECT transplant_center_id FROM lung_offer  "
+-SQL:  "                                WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                                  AND responsedate is NULL) "
+
+>SQL:  "UPDATE lung_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 1   "           
+-SQL:  " WHERE organ_block_id =  %s "                                         organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "  
+
+
+Case: Rejection_Heart/Lung-block_by_TC
+Print: "> The Heart/Lung-block %s from donor %s is declined by the transplant center." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE transplant_center "
+-SQL:  "   SET tc_availability_id = 1 "
+-SQL:  " WHERE transplant_center_id = (SELECT transplant_center_id FROM heart_offer  "
+-SQL:  "                                WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                                  AND responsedate is NULL) "
+
+>SQL:  "UPDATE heart_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 1   "           
+-SQL:  " WHERE organ_block_id =  %s "                                         organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "   
+
+>SQL:  "UPDATE lung_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 1   "           
+-SQL:  " WHERE organ_block_id =  %s "                                         organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "  
+
+
+
+Case: Offer_single_Heart_to_TC
+Print: "Offer the heart to a next transplant center: %s" TC_for_heart.name
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "         TC_for_heart.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  TC_for_heart.transplant_center_id
+
+
+Case: Offer_single_Lungs_to_TC
+Print: "Offer the lungs to a next transplant center: %s"  TC_for_lungs.name
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET lung_status = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO lung_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          TC_for_lungs.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  TC_for_lungs.transplant_center_id
+
+
+Case: Offer_Heart/Lung-block_to_TC/1
+Print: "Offer heart-lung block for the first time to a transplant center: %s" transplant_center.name
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 6, lung_status = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          transplant_center.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "INSERT INTO lung_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          transplant_center.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  transplant_center.transplant_center_id
+
+
+Case: Offer_Heart/Lung-block_to_TC/2
+Print: "Offer heart-lung block to a next transplant center: %s"  TC_for_heart.name
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 6, lung_status = 6 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "INSERT INTO heart_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          TC_for_heart.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "INSERT INTO lung_offer (organ_block_id, transplant_center_id, offerdate) "
+-SQL:  "VALUES (%s, "  organ_block.organ_block_id
+-SQL:  "%s, "          TC_for_heart.transplant_center_id
+<SQL:  "%s) "          DateToday
+>SQL:  "UPDATE transplant_center SET tc_availability_id = 2 "
+<SQL:  "WHERE transplant_center_id = %s"  TC_for_heart.transplant_center_id
+
+
+
+Case: Assign_single_Heart_to_TC
+Print: "The heart in the organ block %s from donor %s is assigned to the Transplant Center." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE organ_block SET heart_status = 13 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "UPDATE transplant_center "
+-SQL:  "   SET tc_availability_id = 1 "
+-SQL:  " WHERE transplant_center_id = (SELECT transplant_center_id FROM heart_offer  "
+-SQL:  "                                WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                                  AND responsedate is NULL) "
+
+>SQL:  "UPDATE heart_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 2   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "      
+
+
+
+Case: Assign_single_Lungs_to_TC
+Print: "The lungs in the organ block %s from donor %s are assigned to the Transplant Center." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE organ_block SET lung_status = 13 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "UPDATE transplant_center "
+-SQL:  "   SET tc_availability_id = 1 "
+-SQL:  " WHERE transplant_center_id = (SELECT transplant_center_id FROM lung_offer  "
+-SQL:  "                                WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                                  AND responsedate is NULL) "
+
+>SQL:  "UPDATE lung_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 2   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "  
+
+
+
+Case: Assign_Heart/Lung-block_to_TC 
+Print: "The Heart/Lung-block %s from donor %s is assigned to the Transplant Center." organ_block.organ_block_id organ_block.name
+Print: "====================================================================" 
+>SQL:  "UPDATE organ_block SET heart_status = 13, lung_status = 13 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+>SQL:  "UPDATE transplant_center "
+-SQL:  "   SET tc_availability_id = 1 "
+-SQL:  " WHERE transplant_center_id = (SELECT transplant_center_id FROM heart_offer  "
+-SQL:  "                                WHERE organ_block_id = %s "           organ_block.organ_block_id
+<SQL:  "                                  AND responsedate is NULL) "
+
+>SQL:  "UPDATE heart_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 2   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "      
+
+>SQL:  "UPDATE lung_offer " 
+-SQL:  "   SET responsedate = datetime(offerdate, '+1 hour'),  "             
+-SQL:  "       response_id = 2   "           
+-SQL:  " WHERE organ_block_id =  %s "      organ_block.organ_block_id         
+<SQL:  "   AND responsedate is NULL "  
+
+ 
+
+Case: Heart_not_accepted
+Print: "The heart is not accepted by patients or transplantation centers."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 8 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: Lungs_not_accepted
+Print: "The lungs have not been accepted by patients or transplant centers."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET lung_status = 8 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+Case: Heart/Lung-block_not_accepted
+Print: "Neither the heart nor the lungs have been accepted by patients or transplantation centres."
+Print: "This concerns organ block %s from donor %s." organ_block.organ_block_id organ_block.name
+Print: "===================================================================="
+>SQL:  "UPDATE organ_block SET heart_status = 8, lung_status = 8 "
+<SQL:  "WHERE donorid = %s" organ_block.donorid
+
+
+
+
+
+
+################################# Database setups ################################# 
+Initial_database_setup: delete_organ_blocks
+Query:
+    DELETE FROM organ_block
+End_Query
+
+Initial_database_setup: insert_new_organ_blocks
+Query:
+    INSERT INTO organ_block (organ_availability_date, lung_status, heart_status, donorid, organ_block_id)
+    VALUES
+     ('2023-06-05', 1, 1, 1, 1),
+     ('2023-06-06', 1, 1, 2, 2),
+     ('2023-06-11', 1, 1, 3, 3),
+     ('2023-06-05', 0, 0, 4, 4),
+     ('2023-06-07', 0, 0, 5, 5)          
+End_Query
+
+Initial_database_setup: delete_heart_offer
+Query:
+    DELETE FROM heart_offer 
+End_Query
+
+
+Initial_database_setup: delete_lung_offer
+Query:
+    DELETE FROM lung_offer
+End_Query
+
+
+Initial_database_setup: delete_high_prio_heart_list
+Query:
+    DELETE FROM high_prio_heart_list
+End_Query
+
+Initial_database_setup: insert_high_prio_heart_list
+Query:
+    INSERT INTO high_prio_heart_list
+    (availability_id, priority, placement_date, patient_id, high_prio_heart_listid)
+    VALUES
+    (1, 90, '2023-05-31', 1, 1),
+    (1, 90, '2023-06-08', 2, 2),
+    (1, 88, '2023-05-31', 3, 3),
+    (0, 60, '2023-06-01', 4, 4),
+    (0, 90, '2023-06-08', 5, 5)
+End_Query
+
+
+
+Initial_database_setup: delete_high_prio_lung_list
+Query:
+    DELETE FROM high_prio_lung_list
+End_Query
+
+Initial_database_setup: insert_high_prio_lung_list
+Query:
+     INSERT INTO high_prio_lung_list
+     (availability_id, priority, placement_date, patient_id, high_prio_lung_listid)
+     VALUES
+     (1, 90, '2023-06-03', 21, 1),
+     (1, 80, '2023-06-04', 22, 2),
+     (1, 80, '2023-06-08', 23, 3),
+     (0, 80, '2023-05-31', 24, 4),
+     (0, 70, '2023-06-08', 25, 5)
+End_Query
+
+
+Initial_database_setup: update_transplant_center
+Query:
+UPDATE transplant_center
+   SET  tc_availability_id = 1
+ WHERE transplant_center_id < 4
+End_Query
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

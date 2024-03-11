@@ -1,0 +1,233 @@
+
+
+SQLite_database: "Database/Flight1.sqlite"
+
+# 3.81-versie: vervanging externe variabelen door interne variabelen. 
+# Geen vervanging van de sortering, want daarvoor zijn juist de variabelen nodig...
+
+# Werkt via: Repeatable_database_view=>: cancelled_passenger
+
+
+Table 0: Determine cancelled flight, alternate flight and first passenger to rebook
+If:                                              | 0| 1| 2| 3|
+'Cancelled flight'                               | Y| Y| Y| N|
+'Passenger to rebook'                            | Y| Y| N| -|
+'Alternative flight for cancelled flight'        | Y| N| -| -|
+Then:
+PreAction is Continued                           | X|  |  |  |
+PreAction is NoRebook                            |  | X|  |  |
+PreAction is NextFlight                          |  |  | X|  |          
+PreAction is Finished                            |  |  |  | X|
+# .......
+# Repeat until: Finished
+
+Table 1: Determine passenger with highest prio and rebook
+If:                                              | 0| 1| 2| 3|
+PreAction.getvalue is Continued                  | Y| Y| Y| N|                   
+'Next passenger to rebook'                       | Y| Y| N| -|
+'Next passenger has higher prio'                 | Y| N| -| -| 
+Then:
+Action is Swap                                   | X|  |  |  |
+Action is NoSwap                                 |  | X|  |  |
+Action is Rebook                                 |  |  | X|  |
+Action is Finished                               |  |  |  | X| 
+# .......
+# Repeat until: Rebook, Finished
+
+
+rTable 2: Determine prio next passenger
+If:                                                               | 0| 1|
+cancelled_passenger.statusid < current_passenger_statusid         | Y| N| 
+cancelled_passenger.statusid = current_passenger_statusid         | -| Y|
+cancelled_passenger.miles    > current_passenger_miles            | -| Y| 
+Then:                                                         
+'Next passenger has higher prio'                                  | X| X|  
+# .......
+
+
+Proposition: 'Cancelled flight'
+Obtain_instance_from_database_view: cancelled_flight
+
+Proposition: 'Alternative flight for cancelled flight'
+Obtain_instance_from_database_view: alternative_flight
+
+Proposition: 'Passenger to rebook'
+Obtain_instance_from_database_view: cancelled_passenger
+
+Proposition: 'Next passenger to rebook'
+Obtain_instance_from_database_view: cancelled_passenger
+
+
+Attribute: current_passenger_name            Type: Text
+Attribute: current_passenger_statusid        Type: Integer
+Attribute: current_passenger_miles           Type: Integer
+Attribute: current_passenger_flight          Type: Text
+Attribute: current_passenger_flightstatus    Type: Text
+Attribute: current_passenger_status          Type: Text 
+ 
+Attribute: cancelled_passenger.name          Type: Text
+Attribute: cancelled_passenger.statusid      Type: Integer
+Attribute: cancelled_passenger.miles         Type: Integer
+Attribute: cancelled_passenger.flight        Type: Text
+Attribute: cancelled_passenger.flightstatus  Type: Text
+Attribute: cancelled_passenger.status        Type: Text 
+
+
+ 
+Database_view: cancelled_flight
+With_attributes:
+flight, from, to, dep, arr, capacity, status
+Query:
+ SELECT *
+  FROM Flights
+ WHERE status = 'cancelled'
+ LIMIT 1
+End_Query
+
+Repeatable_database_view=>: cancelled_passenger
+With_attributes:
+name, statusid, miles, flight, flightstatus, status
+Query:
+SELECT Passenger.*, Status.Status
+  FROM Passenger
+  INNER JOIN Status on Passenger.Statusid=Status.Statusid
+ WHERE Flight = '%s'
+ LIMIT 1 OFFSET %s
+With_arguments: cancelled_flight.flight, cancelled_passenger.auto_index
+
+Database_view: alternative_flight
+With_attributes:
+flight, from, to, dep, arr, capacity, status
+Query:
+SELECT *
+  FROM Flights
+ WHERE [From] = '%s'  AND 
+       [To] = '%s'    AND 
+       Dep > '%s'     AND 
+       Capacity > 0   AND 
+       Status = 'scheduled'
+ ORDER BY Dep
+ LIMIT 1
+With_arguments: cancelled_flight.from, cancelled_flight.to, cancelled_flight.dep   
+
+
+
+GoalAttribute: PreAction
+Repeat_until: Finished
+
+Case: Finished 
+Print: "===================================================================="
+Print: "No passengers to process anymore."
+Print: "The rebooking service has been finished"
+Print: "===================================================================="
+
+Case: Continued
+>>: current_passenger_name          = cancelled_passenger.name
+>>: current_passenger_statusid      = cancelled_passenger.statusid
+>>: current_passenger_miles         = cancelled_passenger.miles
+>>: current_passenger_flight        = cancelled_passenger.flight
+>>: current_passenger_flightstatus  = cancelled_passenger.flightstatus
+>>: current_passenger_status        = cancelled_passenger.status
+
+
+Case: NoRebook
+Print: "%s => %s could not be rebooked."            cancelled_flight.flight cancelled_passenger.name
+>SQL:  "UPDATE Passenger " 
+-SQL:  "   SET Flightstatus = 'not_rebooked'  "
+<SQL:  " WHERE Name = '%s'  "                       cancelled_passenger.name
+
+Case: NextFlight
+Print: "No more passengers to rebook for flight %s." cancelled_flight.flight   
+>SQL:  "UPDATE Flights " 
+-SQL:  "   SET Status = 'completed'  "
+<SQL:  " WHERE Flight = '%s'  "                      cancelled_flight.flight
+
+
+GoalAttribute: Action
+Repeat_until:  Rebook, Finished
+
+Case: Finished
+Print: "#REM# -- print nothing"
+
+Case: Swap
+>>: current_passenger_name          = cancelled_passenger.name
+>>: current_passenger_statusid      = cancelled_passenger.statusid
+>>: current_passenger_miles         = cancelled_passenger.miles
+>>: current_passenger_flight        = cancelled_passenger.flight
+>>: current_passenger_flightstatus  = cancelled_passenger.flightstatus
+>>: current_passenger_status        = cancelled_passenger.status
+
+Case: NoSwap
+Print: "#REM# -- print nothing"
+
+Case: Rebook
+Print: "%s => %s (%s) is confirmed on %s departing %s at %s arriving %s at %s." cancelled_flight.flight current_passenger_name current_passenger_status alternative_flight.flight alternative_flight.from alternative_flight.dep alternative_flight.to alternative_flight.arr
+>SQL:  "UPDATE Passenger " 
+-SQL:  "   SET Flight = '%s', "                     alternative_flight.flight
+-SQL:  "       Flightstatus = 'scheduled' "       
+<SQL:  " WHERE Name = '%s' "                        current_passenger_name
+
+>SQL:  "UPDATE Flights " 
+-SQL:  "   SET Capacity = Capacity - 1 "                      
+<SQL:  " WHERE Flight = '%s' "                      alternative_flight.flight
+
+
+
+Initial_database_setup: delete_passengers
+Query:
+    DELETE FROM Passenger
+End_Query
+
+Initial_database_setup: insert_new_passengers
+Query:
+    INSERT INTO Passenger
+    VALUES
+    ('Tom',    3,     10,   'UA123', 'cancelled'),
+    ('Harry',  1, 100000,   'UA123', 'cancelled'),
+    ('Igor',   1,  50000,   'UA123', 'cancelled'),
+    ('Dick',   2,    100,   'UA123', 'cancelled'),
+    ('Jenny',  1, 500000,   'UA123', 'cancelled'),
+    
+    ('Tomb',   3,     11,   'XA123', 'cancelled'),
+    ('Igorb',  1,  50001,   'XA123', 'cancelled'),
+    ('Dickb',  2,    101,   'XA123', 'cancelled'),
+    ('Jennyb', 1, 500001,   'XA123', 'cancelled'),
+    ('Bill',   0, 500001,   'XA123', 'cancelled'),
+    
+    ('Tomc',   3,     12,   'YA123', 'cancelled'),
+    ('Harryc', 1, 100002,   'YA123', 'cancelled'),
+    ('Igorc',  1,  50002,   'YA123', 'cancelled'),
+    ('Dickc',  2,    102,   'YA123', 'cancelled'),
+    ('Jennyc', 1, 500002,   'YA123', 'cancelled')
+End_Query
+
+Initial_database_setup: delete_flights
+Query:
+    DELETE FROM Flights
+End_Query
+
+Initial_database_setup: insert_new_flights
+Query:
+    INSERT INTO Flights
+    VALUES
+    ('UA123', 'SFO', 'SNA', '2007-01-01 18:00', '2007-01-01 19:00', 5, 'cancelled'),
+    ('UA456', 'SFO', 'SNA', '2007-01-01 19:10', '2007-01-01 20:00', 2, 'scheduled'),
+    ('UA789', 'SFO', 'SNA', '2007-01-01 21:10', '2007-01-01 23:00', 2, 'scheduled'),
+    ('UA1001', 'SFO', 'SNA', '2007-01-01 23:00', '2007-01-02 05:00', 0, 'scheduled'),
+    ('UA1111', 'SFO', 'LAX', '2007-01-01 23:00', '2007-01-02 05:00', 2, 'scheduled'),
+
+    ('XA123', 'SFO', 'SNA', '2007-01-01 18:00', '2007-01-01 19:00', 5, 'cancelled'),
+    ('UA456B', 'SFO', 'SNA', '2007-01-01 19:09', '2007-01-01 20:00', 2, 'scheduled'),
+    ('UA789B', 'SFO', 'SNA', '2007-01-01 21:09', '2007-01-01 23:00', 2, 'scheduled'),
+    ('UA1001B', 'SFO', 'SNA', '2007-01-01 23:00', '2007-01-02 05:00', 0, 'scheduled'),
+    ('UA1111B', 'SFO', 'LAX', '2007-01-01 23:00', '2007-01-02 05:00', 2, 'scheduled'),
+
+    ('YA123', 'SFO', 'SNA', '2007-01-01 18:00', '2007-01-01 19:00', 5, 'cancelled'),
+    ('UA456C', 'SFO', 'SNA', '2007-01-01 19:08', '2007-01-01 20:00', 2, 'scheduled'),
+    ('UA789C', 'SFO', 'SNA', '2007-01-01 21:08', '2007-01-01 23:00', 2, 'scheduled'),
+    ('UA1001C', 'SFO', 'SNA', '2007-01-01 23:00', '2007-01-02 05:00', 0, 'scheduled'),
+    ('UA1111C', 'SFO', 'LAX', '2007-01-01 23:00', '2007-01-02 05:00', 2, 'scheduled') 
+End_Query
+
+
+

@@ -1,0 +1,394 @@
+
+
+ 
+
+
+SQLite_database: "Database/TeamPlayerPerformance.sqlite3"
+
+Table 0: Process all games and count team and player performances
+If:                                            | 0| 1|
+'Next Game to process?'                        | Y| N|
+Then:                                                 
+Eval_Game is Process_game                      | X|  |
+Eval_Game is Finished                          |  | X|  
+# .......
+# Repeat while: Eval_Game is Process_game
+
+
+Proposition: 'Next Game to process?'
+Obtain_instance_from_database_view: game
+
+
+# DISPLAY TEAM(S) WITH MOST POINTS ###################################
+rTable 1: display one or more teams with highest average
+If:                                                         | 0| 1| 2| 
+'First team with most points'                               | Y| Y| Y|
+'Next team with most points'                                | Y| Y| N|
+next_team_most.totalpoints = first_team_most.totalpoints    | Y| N| -|
+Then:                                              
+Eval_Team1 is Display_first_teams                           | X|  |  |
+Eval_Team1 is Display_one_team                              |  | X| X|
+# .......
+
+
+Proposition: 'First team with most points'
+Obtain_instance_from_database_view: first_team_most
+
+Proposition: 'Next team with most points'
+Obtain_instance_from_database_view: next_team_most
+
+
+Table 2: display next teams with most points
+If:                                                         | 0| 1| 2|
+'Next team with most points'                                | Y| Y| N|
+next_team_most.totalpoints = first_team_most.totalpoints    | Y| N| -|
+Then:                                              
+Eval_Team2 is Display_next_team                             | X|  |  |
+Eval_Team2 is Finished                                      |  | X| X|
+# .......
+# Repeat while: Eval_Team2 is Display_next_team
+
+
+
+# DISPLAY PLAYER(S) WITH HIGHEST AVERAGE #############################
+rTable 3: display one or more players with highest average
+If:                                                         | 0| 1| 2| 
+'First player with highest average'                         | Y| Y| Y|
+'Next player with highest average'                          | Y| Y| N|
+next_player_high.avgpoints = first_player_high.avgpoints    | Y| N| -|
+Then:                                              
+Eval_High1 is Display_first_players                         | X|  |  |
+Eval_High1 is Display_one_player                            |  | X| X|
+# .......
+
+
+Proposition: 'First player with highest average'
+Obtain_instance_from_database_view: first_player_high
+
+Proposition: 'Next player with highest average'
+Obtain_instance_from_database_view: next_player_high
+
+
+Table 4: display next players with highest average
+If:                                                         | 0| 1| 2|
+'Next player with highest average'                          | Y| Y| N|
+next_player_high.avgpoints = first_player_high.avgpoints    | Y| N| -|
+Then:                                              
+Eval_High2 is Display_next_player                           | X|  |  |
+Eval_High2 is Finished                                      |  | X| X|
+# .......
+# Repeat while: Eval_High2 is Display_next_player
+
+
+
+# DISPLAY PLAYER(S) WITH LOWEST AVERAGE ##############################
+rTable 5: display one or more players with lowest average
+If:                                                         | 0| 1| 2| 
+'First player with lowest average'                          | Y| Y| Y|
+'Next player with lowest average'                           | Y| Y| N|
+next_player_low.avgpoints = first_player_low.avgpoints      | Y| N| -|
+Then:                                              
+Eval_Low1 is Display_first_players                          | X|  |  |
+Eval_Low1 is Display_one_player                             |  | X| X|
+# .......
+
+
+Proposition: 'First player with lowest average'
+Obtain_instance_from_database_view: first_player_low
+
+Proposition: 'Next player with lowest average'
+Obtain_instance_from_database_view: next_player_low
+
+
+Table 6: display next players with lowest average
+If:                                                         | 0| 1| 2|
+'Next player with lowest average'                           | Y| Y| N|
+next_player_low.avgpoints = first_player_low.avgpoints      | Y| N| -|
+Then:                                              
+Eval_Low2 is Display_next_player                            | X|  |  |
+Eval_Low2 is Finished                                       |  | X| X|
+# .......
+# Repeat while: Eval_Low2 is Display_next_player
+
+
+
+Attribute: Efficiency  Type: Text
+Obtain_value_from_database_view: game.efficiency
+
+Attribute: points      Type: Integer
+Equals:  5 if Efficiency == "best"    \
+   else  3 if Efficiency == "better"  \ 
+   else  2 if Efficiency == "good"    \ 
+   else -2 if Efficiency == "bad"     \
+   else -5 if Efficiency == "worst"   \
+   else 99999
+
+
+Attribute: first_team_most.totalpoints   Type: Integer
+Attribute: next_team_most.totalpoints    Type: Integer
+
+Attribute: first_player_high.avgpoints   Type: Real
+Attribute: next_player_high.avgpoints    Type: Real
+
+Attribute: first_player_low.avgpoints    Type: Real
+Attribute: next_player_low.avgpoints     Type: Real
+
+
+Attribute: next_most_index_starting_at_1   Type: Integer
+Equals:    next_team_most.auto_index + 1
+
+Attribute: next_high_index_starting_at_1   Type: Integer
+Equals:    next_player_high.auto_index + 1
+
+Attribute: next_low_index_starting_at_1    Type: Integer
+Equals:    next_player_low.auto_index + 1
+
+
+########################### Database views ########################### 
+
+Database_view: game
+With_attributes:
+teamid, playerid, efficiency
+Query:
+SELECT teamid, playerid, efficiency
+  FROM game
+ LIMIT 1 OFFSET %s  
+With_arguments: game.auto_index   
+
+
+# DISPLAY TEAM(S) WITH MOST POINTS
+Database_view: first_team_most
+With_attributes: teamid, teamname, totalpoints
+Query:
+SELECT teamid, teamname, totalpoints
+  FROM sum_per_team 
+ ORDER BY totalpoints DESC, teamid ASC  
+ LIMIT 1 OFFSET 0
+End_Query 
+
+Repeatable_database_view=>: next_team_most
+With_attributes: teamid, teamname, totalpoints
+Query:
+SELECT teamid, teamname, totalpoints
+  FROM sum_per_team 
+ ORDER BY totalpoints DESC, teamid ASC 
+ LIMIT 1 OFFSET %s
+With_arguments: next_most_index_starting_at_1
+
+
+# DISPLAY PLAYER(S) WITH HIGHEST AVERAGE
+Database_view: first_player_high
+With_attributes:
+playerid, playername, teamname, avgpoints
+Query:
+SELECT playerid, playername, teamname, avgpoints
+  FROM sum_per_player 
+ ORDER BY avgpoints DESC, playerid ASC
+ LIMIT 1 OFFSET 0
+End_Query 
+
+Repeatable_database_view=>: next_player_high
+With_attributes:
+playerid, playername, teamname, avgpoints
+Query:
+SELECT playerid, playername, teamname, avgpoints
+  FROM sum_per_player 
+ ORDER BY avgpoints DESC, playerid ASC
+ LIMIT 1 OFFSET %s
+With_arguments: next_high_index_starting_at_1
+
+# DISPLAY PLAYER(S) WITH LOWEST AVERAGE
+Database_view: first_player_low
+With_attributes:
+playerid, playername, teamname, avgpoints
+Query:
+SELECT playerid, playername, teamname, avgpoints
+  FROM sum_per_player 
+ ORDER BY avgpoints ASC, playerid ASC
+ LIMIT 1 OFFSET 0
+End_Query 
+
+Repeatable_database_view=>: next_player_low
+With_attributes:
+playerid, playername, teamname, avgpoints
+Query:
+SELECT playerid, playername, teamname, avgpoints
+  FROM sum_per_player 
+ ORDER BY avgpoints ASC, playerid ASC
+ LIMIT 1 OFFSET %s
+With_arguments: next_low_index_starting_at_1
+
+
+########################### GoalAttributes ########################### 
+
+GoalAttribute: Eval_Game
+Repeat_while: Process_game
+
+Case: Process_game
+Print: "Efficiency for player %s is %s so add %s points for team with id: %s " game.playerid  game.efficiency  points  game.teamid      
+>SQL:  "UPDATE sum_per_team " 
+-SQL:  "   SET totalpoints = totalpoints + %s "       points
+<SQL:  " WHERE teamid = %s "                          game.teamid
+>SQL:  "UPDATE sum_per_player " 
+-SQL:  "   SET totalgames = totalgames + 1,   "       
+-SQL:  "       totalpoints = totalpoints + %s "       points
+<SQL:  " WHERE playerid = %s "                        game.playerid
+>SQL:  "UPDATE sum_per_player " 
+-SQL:  "   SET avgpoints = round(totalpoints*1.0/totalgames, 2) "
+<SQL:  " WHERE playerid = %s "                        game.playerid
+
+
+Case: Finished
+Print: "    "
+
+
+
+# DISPLAY ONE OR FIRST TEAM WITH MOST POINTS
+GoalAttribute: Eval_Team1
+
+Case: Display_first_teams
+Print: "Teams with most points (%s):"                      first_team_most.totalpoints 
+Print: "- %s "                                             first_team_most.teamname 
+Print: "- %s "                                             next_team_most.teamname
+
+
+Case: Display_one_team
+Print: "Winner is team %s with %s points!"                 first_team_most.teamname  first_team_most.totalpoints
+Print: "        " 
+
+# DISPLAY NEXT TEAMS WITH MOST POINTS
+GoalAttribute: Eval_Team2
+Repeat_while: Display_next_team 
+
+Case: Display_next_team
+Print: "- %s "                                             next_team_most.teamname 
+
+Case: Finished
+Print: "      "
+
+
+# DISPLAY ONE PLAYER OR FIRST 2 PLAYERS WITH HIGHEST AVERAGE
+GoalAttribute: Eval_High1
+
+Case: Display_first_players
+Print: "Players with highest average (%s):"                first_player_high.avgpoints 
+Print: "- %s (team: %s)"                                   first_player_high.playername  first_player_high.teamname
+Print: "- %s (team: %s)"                                   next_player_high.playername next_player_high.teamname
+
+
+Case: Display_one_player
+Print: "Player with highest average (%s): %s  (team: %s) " first_player_high.avgpoints   first_player_high.playername first_player_high.teamname 
+Print: "        " 
+
+# DISPLAY NEXT PLAYERS WITH HIGHEST AVERAGE
+GoalAttribute: Eval_High2
+Repeat_while: Display_next_player 
+
+Case: Display_next_player
+Print: "- %s (team: %s)"                                   next_player_high.playername   next_player_high.teamname
+
+Case: Finished
+Print: "      "
+
+# DISPLAY ONE PLAYER OR FIRST 2 PLAYERS WITH LOWEST AVERAGE
+GoalAttribute: Eval_Low1
+
+Case: Display_first_players
+Print: "Players with lowest average (%s):"                 first_player_low.avgpoints 
+Print: "- %s (team: %s)"                                   first_player_low.playername  first_player_low.teamname
+Print: "- %s (team: %s)"                                   next_player_low.playername next_player_low.teamname
+
+Case: Display_one_player
+Print: "Player with lowest average (%s): %s  (team: %s) "  first_player_low.avgpoints   first_player_low.playername first_player_low.teamname
+Print: "        " 
+
+
+# DISPLAY NEXT PLAYERS WITH LOWEST AVERAGE
+GoalAttribute: Eval_Low2
+Repeat_while: Display_next_player 
+
+Case: Display_next_player
+Print: "- %s (team: %s)"                                   next_player_low.playername   next_player_low.teamname
+
+Case: Finished
+Print: "      "
+
+
+Initial_database_setup: delete_table_sum_per_team
+Query:
+    DROP TABLE sum_per_team
+End_Query
+
+
+Initial_database_setup: initialize_sum_per_team_from_games
+Query:
+    CREATE TABLE sum_per_team AS
+    SELECT distinct a.teamid, b.name AS teamname, 0 as totalpoints
+      FROM game AS a
+      JOIN team AS b on (a.teamid = b.id)
+     ORDER BY a.teamid
+End_Query
+
+
+Initial_database_setup: delete_table_sum_per_player
+Query:
+    DROP TABLE sum_per_player
+End_Query
+
+
+Initial_database_setup: initialize_sum_per_player_from_games
+Query:
+    CREATE TABLE sum_per_player AS
+    SELECT distinct a.playerid, b.name AS playername, c.name AS teamname, 
+           0 AS totalgames, 0 AS totalpoints, 0.0 AS avgpoints
+      FROM game AS a
+      JOIN player AS b on (a.playerid = b.id)
+      JOIN team AS c on (a.teamid = c.id)
+     ORDER BY a.playerid 
+End_Query
+
+
+
+xxInitial_database_setup: make_start_summation_per_team
+Query:
+    UPDATE sum_per_team SET totalpoints = 0
+End_Query
+
+xxInitial_database_setup: initialize_sum_per_player
+Query:
+    UPDATE sum_per_player SET totalgames = 0, totalpoints = 0, avgpoints = 0.00
+End_Query
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

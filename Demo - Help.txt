@@ -1,0 +1,118 @@
+
+
+
+DEMO FILES
+
+See: https://dmcommunity.org/challenge/
+
+
+SQlite (Installation optional):
+
+    Challenge Oct-2016 - Rebooking Passengers from Cancelled Flights
+        SQLite_database: "Database/Flight1.sqlite"
+            .\DT.exe -source:RebookPassenger_v1.txt
+            .\DT.exe -source:RebookPassenger_v2.txt
+
+    Challenge March-2019 - Offering Donated Organs for Transplant     
+        SQLite_database: "Database/organdonation.sqlite"
+            .\DT.exe -source:OrganDonation_sqlite_SV_v2.txt
+            .\DT.exe -source:OrganDonation_sqlite_MV_v2.txt
+
+        SQLite_database: "Database/organdonation2.sqlite"
+            .\DT.exe -source:OrganDonation_sqlite_v3.txt     
+    
+    Challenge May-2020 - Pay-As-You-Go Pricing
+        SQLite_database: "Database/Pay_as_you_GO.sqlite3"
+            .\DT.exe -source:Pay_as_you_GO_SQLite_v1.txt
+            .\DT.exe -source:Pay_as_you_GO_SQLite_v2.txt
+
+    Challenge Apr-2021 - Rate Loan Risk Category
+        SQLite_database: "Database/Risk.db"
+            .\DT.exe -source:LoanRisk_1tabel_SQLite.txt                   
+            .\DT.exe -source:LoanRisk_meerdere_tabellen_SQLite.txt 
+
+    Challenge May-2021 - COVID-19 Testing          
+        SQLite_database: "Database/Covidtest.sqlite3"
+            .\DT.exe -source:Covid_Test_SQLite_v1.txt
+            .\DT.exe -source:Covid_Test_SQLite_v2.txt
+
+    Challenge May-2022 - Medical Claim Processing 
+        SQLite_database: "Database/ClaimTC.db"
+            .\DT.exe -source:Medical_Claim_Solution1_SQLite.txt
+            .\DT.exe -source:Medical_Claim_Solution2_SQLite.txt    
+
+    Challenge July-2022 - Evaluate Team Performance
+        SQLite_database: "Database/TeamPerformance.sqlite3"
+            .\DT.exe -source:TeamPerformance_V1a_SQLite.txt
+            .\DT.exe -source:TeamPerformance_V1b_SQLite.txt
+
+        SQLite_database: "Database/TeamPlayerPerformance.sqlite3"
+            .\DT.exe -source:TeamPlayerPerformance_V2_SQLite.txt
+            .\DT.exe -source:TeamPlayerPerformance_V3_SQLite.txt
+
+    Challenge March-2023 - Permit Eligibility 
+        SQLite_database: "Database/Applicant.sqlite"
+            .\DT.exe -source:Permit_Eligibility_SQLite_v1.txt
+            .\DT.exe -source:Permit_Eligibility_SQLite_v2.txt
+
+    Challenge Aug-2023 - Soldier Payment Rules     
+        SQLite_database: "Database/Soldier Payment.db"
+            .\DT.exe -source:Soldier_Payment_SQLite_V1a.txt            /* ends in an error; fixed with version 1b */
+            .\DT.exe -source:Soldier_Payment_SQLite_V1b.txt
+        
+        SQLite_database: "Database/Soldier Payment2.db"
+            .\DT.exe -source:Soldier_Payment_SQLite_V2.txt
+
+
+
+Interactive (No database required). 
+    Challenge June-2017 - DMN Section 11 Loan Origination Example 
+        .\DT.exe -source:LoanOrigination.txt  -nti
+        
+    Challenge April-2018 - Up-Selling Rules    
+        .\DT.exe -source:UpSellingRules.txt 
+        
+    Challenge June-2018 - Credit Card Application    
+        .\DT.exe -source:CreditCard_full_table_version.txt
+        .\DT.exe -source:CreditCard_reduced_table_version.txt
+
+    Challenge Nov-2018 - Vacation Days Advanced  
+        .\DT.exe -source:Vacationdays.txt                             
+
+    Challenge March-2019 - Offering Donated Organs for Transplant 
+        .\DT.exe -source:OrganDonation_v1.txt                          
+
+    Challenge Apr-2019 - Recreational Fee        
+        .\DT.exe -source:RecreationalFee.txt
+
+    Challenge May-2020 - Pay-As-You-Go Pricing    
+        .\DT.exe -source:Pay_as_you_GO_Conditional_Expressions.txt    
+        .\DT.exe -source:Pay_as_you_GO_Decision_Tables.txt 
+
+    Challenge Apr-2021 - Rate Loan Risk Category   
+        .\DT.exe -source:LoanRisk_1tabel_interactief.txt
+        .\DT.exe -source:LoanRisk_meerdere_tabellen_interactief.txt 
+
+    Challenge May-2021 - COVID-19 Testing                                
+        .\DT.exe -source:Coviddemo_stap1_2symptomen.txt
+        .\DT.exe -source:Coviddemo_step1_4symptoms.txt
+        
+    Challenge June-2021 - Where is gold?           
+        .\DT.exe -source:Gold_interactive.txt
+        .\DT.exe -source:Gold_automated.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        
+        

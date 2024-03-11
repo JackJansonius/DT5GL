@@ -1,0 +1,144 @@
+
+
+
+Table 0: 
+If:                                              | 0| 1|
+'Next borrower'                                  | Y| N|
+Then:                                                
+LoanRisk is Exit                                 |  | X|
+# .......
+
+SQLite_database: "Database/Risk.db"
+
+Proposition: 'Next borrower'
+Obtain_instance_from_database_view: Borrower
+
+rTable 1: 
+If:                            | 0| 1|
+Worst_DTI < 36                 | Y| Y|          
+LTV_Risk is Low                | Y| N|
+LTV_Risk is Medium             | -| Y|
+Worst_Credit_Score >= 680      | Y| -|
+Worst_Credit_Score >  700      | -| Y|
+Then:
+LoanRisk is Low                | X| X|    
+# .......
+
+rTable 2: 
+If:                            | 0| 1| 2| 3|
+Worst_DTI < 36                 | Y| Y| N| N|          
+Worst_DTI <= 45                | -| -| Y| Y|
+LTV_Risk is Low                | Y| N| Y| N|
+LTV_Risk is Medium             | -| Y| -| Y|
+Worst_Credit_Score >= 680      | N| -| Y| -|
+Worst_Credit_Score >= 640      | Y| -| -| -|
+Worst_Credit_Score >  700      | -| N| -| Y|
+Worst_Credit_Score >= 660      | -| Y| -| -|
+Then:
+LoanRisk is Medium             | X| X| X| X|
+# .......
+
+rTable 3: 
+If:                            | 0| 1| 2| 3| 4| 5| 6|
+Worst_DTI < 36                 | Y| Y| Y| N| N| N| N|          
+Worst_DTI <= 45                | -| -| -| Y| Y| Y| N|
+LTV_Risk is Low                | Y| N| N| Y| N| N| -|
+LTV_Risk is Medium             | -| Y| N| -| Y| N| -|
+Worst_Credit_Score >= 680      | N| -| -| N| -| -| -|
+Worst_Credit_Score >= 640      | N| -| -| -| -| -| -|
+Worst_Credit_Score >  700      | -| N| -| -| N| -| -|
+Worst_Credit_Score >= 660      | -| N| -| -| -| -| -|
+Then:
+LoanRisk is High               | X| X| X| X| X| X| X|
+# .......
+
+
+Table 4:
+If:                            | 0| 1| 2| 3|
+LTV_Pct_Check <> "None"        | Y| Y| Y| N|
+LTV_Pct <  60                  | Y| N| N| -|
+LTV_Pct <= 80                  | -| Y| N| -|
+Then:
+LTV_Risk is Low                | X|  |  |  |
+LTV_Risk is Medium             |  | X|  |  |
+# .......
+
+
+Attribute: Worst_DTI
+Obtain_value_from_database_view: Borrower.DTIPct 
+
+Attribute: Worst_Credit_Score
+Obtain_value_from_database_view: Borrower.CreditScore
+
+# LTV_Pct kan null zijn in de database, dus checken met dit attribuut; type: text!
+Attribute: LTV_Pct_Check 
+Obtain_value_from_database_view: Borrower.LTVPct
+
+Attribute: LTV_Pct
+Obtain_value_from_database_view: Borrower.LTVPct
+
+Database_view: Borrower
+With_attributes:
+Name, LoanAmount, LTVPct, CreditScore, DTIPct, LoanRisk
+Query:
+SELECT *
+  FROM Borrower
+ LIMIT 1 OFFSET %s  
+With_arguments: Borrower.auto_index   
+
+
+GoalAttribute: LoanRisk
+Repeat_until: Exit
+
+Case: Exit
+Print: "Finished"
+
+Case: Low
+Print: "Loan Risk for %s: LOW"     Borrower.Name
+>SQL:  "UPDATE Borrower " 
+-SQL:  "   SET LoanRisk = 'Low' "                      
+<SQL:  " WHERE Name = '%s' "       Borrower.Name
+
+Case: Medium
+Print: "Loan Risk for %s: MEDIUM"  Borrower.Name
+>SQL:  "UPDATE Borrower " 
+-SQL:  "   SET LoanRisk = 'Medium'  "                      
+<SQL:  " WHERE Name = '%s' "       Borrower.Name
+
+Case: High
+Print: "Loan Risk for %s: HIGH"    Borrower.Name
+>SQL:  "UPDATE Borrower " 
+-SQL:  "   SET LoanRisk = 'High'   "                     
+<SQL:  " WHERE Name = '%s' "       Borrower.Name
+
+
+
+Initial_database_setup: delete_borrowers
+Query:
+    DELETE FROM Borrower
+End_Query
+
+Initial_database_setup: insert_new_borrowers
+Query:
+    INSERT INTO Borrower 
+     (Name, LoanAmount, LTVPct, CreditScore, DTIPct) 
+    VALUES
+    ('TC0',      20000,     59,         680,     35),
+    ('TC1',      20000,     59,         679,     34),
+    ('TC2',      20000,     59,         639,     35),
+    ('TC3',      20000,     60,         701,     35),
+    ('TC4',      20000,     80,         700,     35),
+    ('TC5',      20000,     60,         659,     35),
+    ('TC6a',     20000,     81,        Null,     35),
+    ('TC6b',     20000,   Null,        Null,     35),
+    ('TC7',      20000,     59,         680,     45),
+    ('TC8',      20000,     59,         679,     36),
+    ('TC9',      20000,     60,         701,     45),
+    ('TC10',     20000,     60,         700,     44),
+    ('TC11a',    20000,     81,        Null,     45),
+    ('TC11b',    20000,   Null,        Null,     45),
+    ('TC12',     20000,   Null,        Null,     46)
+End_Query
+
+
+

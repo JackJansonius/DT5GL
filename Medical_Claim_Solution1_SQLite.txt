@@ -1,0 +1,162 @@
+
+
+SQLite_database: "Database/ClaimTC.db"
+
+Table 0:
+If:                                              | 0| 1|
+'next testcase number selected'                  | Y| N|     
+Then:
+NextTC is Selected                               | X|  |
+NextTC is Finished                               |  | X|
+# .......
+# Repeat until: Finished
+
+Proposition: 'next testcase number selected'
+Obtain_instance_from_database_view: testcase
+
+
+Table 1:
+If:                                              | 0| 1|
+'next code 1 selected'                           | Y| N|     
+Then:
+FirstCode is Selected                            | X|  |
+FirstCode is Finished                            |  | X|
+# .......
+# Repeat until: Finished
+
+Proposition: 'next code 1 selected'
+Obtain_instance_from_database_view: input1
+
+
+Table 2: 
+If:                                              | 0| 1| 2| 3| 4|
+'next code 2 selected'                           | Y| Y| Y| Y| N|                  
+input1.code <> input2.code                       | Y| Y| Y| N| -|
+'combo already reported'                         | Y| N| N| -| -|
+'combo present in codes'                         | -| Y| N| -| -|     
+Then:                                                            
+EvalCombo is NotReported                         | X|  | X| X|  |                                                      
+EvalCombo is Reported                            |  | X|  |  |  |
+EvalCombo is Finished                            |  |  |  |  | X|
+# .......
+# Repeat until: Finished
+
+
+Proposition: 'next code 2 selected'
+Obtain_instance_from_database_view: input2
+
+Proposition: 'combo present in codes'
+Obtain_instance_from_database_view: code
+
+Proposition: 'combo already reported'
+Obtain_instance_from_database_view: already_found_combos
+
+Attribute: input1.code      Type: Text
+Attribute: input2.code      Type: Text
+
+
+########################### Database views ###########################
+
+
+Database_view: testcase
+With_attributes:
+number
+Query:
+ SELECT distinct tc
+  FROM input
+ LIMIT 1 OFFSET %s
+With_arguments: testcase.auto_index
+
+
+Database_view: input1
+With_attributes:
+code 
+Query:
+SELECT distinct code
+  FROM input
+ WHERE tc = %s
+ LIMIT 1 OFFSET %s
+With_arguments: testcase.number, input1.auto_index
+
+Database_view: input2
+With_attributes:
+code 
+Query:
+SELECT distinct code
+  FROM input
+ WHERE tc = %s
+ LIMIT 1 OFFSET %s
+With_arguments:  testcase.number, input2.auto_index
+
+
+Database_view: code
+With_attributes:
+column1, column2
+Query:
+SELECT column1, column2
+  FROM icd10codes
+ WHERE column1 = '%s' AND column2 = '%s' 
+       OR
+       column1 = '%s' AND column2 = '%s' 
+ LIMIT 1
+With_arguments: input1.code, input2.code, input2.code, input1.code 
+
+
+Database_view: already_found_combos
+With_attributes:
+code1, code2
+Query:
+SELECT code1, code2
+  FROM found
+ WHERE code1 = '%s' AND 
+       code2 = '%s' 
+ LIMIT 1
+With_arguments: input2.code, input1.code
+
+
+########################### GoalAttributes ########################### 
+GoalAttribute: NextTC
+Repeat_until: Finished
+
+Case: Finished
+Print: "Finished"
+
+Case: Selected
+Print: "------- Testcase: %s --------------"       testcase.number
+
+
+GoalAttribute: FirstCode
+Repeat_until: Finished
+
+Case: Finished
+Print: "   "
+>SQL:  "DELETE FROM found  "
+<SQL:  "   "              
+
+Case: Selected
+Print: "#REM# -- print nothing"
+
+GoalAttribute: EvalCombo
+Repeat_until: Finished
+
+Case: Finished
+Print: "#REM# -- print nothing"
+
+Case: NotReported
+Print: "#REM# -- print nothing"
+
+Case: Reported
+Print: "Diagnosis Code [%s] cannot be reported together with [%s]" input1.code input2.code
+>SQL:  "INSERT INTO found (code1, code2) "
+<SQL:  "VALUES ('%s', '%s') "                                      input1.code input2.code
+
+
+Initial_database_setup: empty_table_found
+Query:
+    DELETE FROM found 
+End_Query
+
+
+
+
+

@@ -1,0 +1,391 @@
+
+
+Decision overview:
+         
+Loan_Origination_Result
+    Adjudication
+    Routing
+        Strategy
+            Eligibility
+                Pre_Bureau_Risk_Category
+                    Existing_Customer   
+                    Application_Risk_Score
+                        Age_Risk_Score
+                            Age
+                        Marital_Risk_Score
+                            Marital_Status
+                        Employment_Risk_Score
+                            Employment_Status  
+                   
+                Pre_Bureau_Affordability
+                    Pre_Bureau_Affordability_Formula
+                        Required_Monthly_Installment
+                        Disposable_Income
+                        Pre_Bureau_Credit_Contingency_Factor
+                            > Pre_Bureau_Risk_Category
+                Age                           
+            Bureau_Call_Type
+                > Pre_Bureau_Risk_Category
+            
+        Post_Bureau_Risk_Category
+            Existing_Customer            
+            > Application_Risk_Score  
+            Credit_Score         
+
+        Post_Bureau_Affordability
+            Post_Bureau_Affordability_Formula
+                > Required_Monthly_Installment
+                > Disposable_Income
+                Post_Bureau_Credit_Contingency_Factor
+                    > Post_Bureau_Risk_Category
+
+        Banktrupt
+        Credit_Score
+
+
+
+
+
+Table 0: Loan Origination Result
+If:                                         | 0| 1| 2| 3| 4| 5|
+Routing is Decline                          | Y| N| N| N| N| N|
+Routing is Refer                            | -| Y| Y| Y| N| N|
+Routing is Accept                           | -| -| -| -| Y| N|
+Adjudication is Decline                     | -| Y| N| N| -| -|
+Adjudication is Accept                      | -| -| Y| N| -| -|
+Then:                                                       
+Loan_Origination_Result is Decline          | X| X|  |  |  |  |
+Loan_Origination_Result is Accept           |  |  | X|  | X|  |
+Loan_Origination_Result is Undecided        |  |  |  | X|  |  |
+'Additional info'                           | X| X| X| X| X|  |
+# .......
+
+GoalAttribute: Loan_Origination_Result
+Case: Decline
+Print: "Loan Origination Result is: Decline" 
+
+Case: Accept 
+Print: "Loan Origination Result is: Accept" 
+
+Case: Undecided 
+Print: "Loan Origination Result is: Undecided" 
+
+
+Attribute: Adjudication
+Askable_using: "What is the final adjudication?"
+
+
+Table 1: Routing - Strategy = Bureau
+If:                                          | 0| 1| 2| 3| 4| 5|
+Strategy is Bureau                           | Y| Y| Y| Y| Y| N|
+Post_Bureau_Risk_Category is High            | Y| N| N| N| N| -|
+Post_Bureau_Affordability is True            | -| Y| Y| Y| N| -|   
+Banktrupt is True                            | -| Y| N| N| -| -|
+Credit_Score < 580                           | -| -| Y| N| -| -|
+Then:                                                           
+Routing is Decline                           |  | X|  |  | X|  |
+Routing is Refer                             | X|  | X|  |  |  |
+Routing is Accept                            |  |  |  | X|  |  |
+# .......
+
+
+Table 2: Routing - Strategy <> Bureau
+If:                                          | 0| 1| 2|
+Strategy is Decline                          | Y| N| N|
+Strategy is Through                          | -| Y| N|
+Then:
+Routing is Decline                           | X|  |  |
+Routing is Accept                            |  | X|  |
+# .......
+
+
+
+rTable 3: Post Bureau Affordability
+If:                                          | 0|
+Post_Bureau_Affordability_Formula = 1.0      | Y|
+Then:
+Post_Bureau_Affordability is True            | X| 
+# .......
+
+NB: based on pythonic logic: float(7<8) = 1.0 ; float(7<6) = 0.0
+
+Attribute: Post_Bureau_Affordability_Formula   
+Derived_from_formula: Required_Monthly_Installment < Disposable_Income * Post_Bureau_Credit_Contingency_Factor
+
+
+Table 4: Post Bureau Credit Contingency Factor
+If:                                           | 0| 2| 3| 4| 5|
+Post_Bureau_Risk_Category is High             | Y| N| N| N| N| 
+Post_Bureau_Risk_Category is Medium           | -| Y| N| N| N|
+Post_Bureau_Risk_Category is Low              | -| -| Y| N| N|
+Post_Bureau_Risk_Category is Very-Low         | -| -| -| Y| N|
+Then:                                        
+Post_Bureau_Credit_Contingency_Factor = 0.6   | X|  |  |  |  |
+Post_Bureau_Credit_Contingency_Factor = 0.7   |  | X|  |  |  |
+Post_Bureau_Credit_Contingency_Factor = 0.8   |  |  | X| X|  |
+# .......
+
+
+Attribute: Banktrupt  
+Askable_using:  "Is this a case of bankruptcy?" 
+
+Attribute: Credit_Score 
+Askable_using: "What is the Credit Score (>=580 is Accept)"
+
+
+Table 5: Strategy
+If:                                          | 0| 1| 2| 3| 4|
+Eligibility is Eligible                      | Y| Y| Y| Y| N|
+Bureau_Call_Type is FULL                     | Y| N| N| N| -|
+Bureau_Call_Type is MINI                     | -| Y| N| N| -|
+Bureau_Call_Type is NONE                     | -| -| Y| N| -|
+Then:
+Strategy is Bureau                           | X| X|  |  |  |
+Strategy is Through                          |  |  | X|  |  |
+Strategy is Decline                          |  |  |  |  | X|
+# .......
+
+
+
+rTable 6: Eligibility
+If:                                          | 0|
+Pre_Bureau_Risk_Category is Decline          | N|
+Pre_Bureau_Affordability is True             | Y|
+Age < 18                                     | N|
+Then:
+Eligibility is Eligible                      | X|
+# .......
+
+
+rTable 7: Pre Bureau Affordability
+If:                                          | 0|
+Pre_Bureau_Affordability_Formula = 1.0       | Y|
+Then:
+Pre_Bureau_Affordability is True             | X| 
+# .......
+
+
+Attribute: Pre_Bureau_Affordability_Formula    
+Derived_from_formula: Required_Monthly_Installment < Disposable_Income * Pre_Bureau_Credit_Contingency_Factor
+
+Attribute: Required_Monthly_Installment Type: Real
+Derived_from_formula: PMT + Monthly_Fee
+
+Attribute: PMT   Type: Real
+Derived_from_formula: (Amount*Rate/12)/(1-(1+Rate/12)**-Term)
+
+# alternative (same result): 
+# Derived_from_formula: abs(pmt(Rate/12, Term, Amount))
+# NB: Function pmt imported from numpy
+
+Attribute: Rate    Type: Real
+Askable_using: "What is the Rate (notation 0.0000) of the requested product?"
+Attribute: Term    Type: Integer
+Askable_using: "What is the Term (in months) of the requested product?"
+Attribute: Amount  Type: Real
+Askable_using: "What is the Amount of the requested product?"
+
+Attribute: Disposable_Income Type: Real
+Derived_from_formula: Monthly_Income - (Monthly_Repayments + Monthly_Expenses)
+
+Attribute: Monthly_Income Type: Real
+Askable_using: "What is the Monthly_Income?"
+Attribute: Monthly_Repayments Type: Real
+Askable_using: "What is the Monthly_Repayments?"
+Attribute: Monthly_Expenses Type: Real
+Askable_using: "What is the Monthly_Expenses?"
+
+
+rTable 8: Product Type
+If:                                          | 0| 1|
+Product_Type is Standard_Loan                | Y| N|
+Product_Type is Special_Loan                 | -| Y|
+Then:
+Monthly_Fee = 20.00                          | X|  |
+Monthly_Fee = 25.00                          |  | X|
+# .......
+
+
+Attribute: Product_Type
+Askable_using: "What is the product type of the requested product?" 
+
+
+Table 9: Pre Bureau Credit Contingency Factor
+If:                                          | 0| 1| 2| 3| 4| 5|
+Pre_Bureau_Risk_Category is High             | Y| N| N| N| N| N| 
+Pre_Bureau_Risk_Category is Decline          | -| Y| N| N| N| N|
+Pre_Bureau_Risk_Category is Medium           | -| -| Y| N| N| N|
+Pre_Bureau_Risk_Category is Low              | -| -| -| Y| N| N|
+Pre_Bureau_Risk_Category is Very-Low         | -| -| -| -| Y| N|
+Then:                                        
+Pre_Bureau_Credit_Contingency_Factor = 0.6   | X| X|  |  |  |  |
+Pre_Bureau_Credit_Contingency_Factor = 0.7   |  |  | X|  |  |  |
+Pre_Bureau_Credit_Contingency_Factor = 0.8   |  |  |  | X| X|  |
+# .......
+
+
+Table 10: Bureau Call Type
+If:                                          | 0| 1| 2| 3| 4| 5|
+Pre_Bureau_Risk_Category is High             | Y| N| N| N| N| N| 
+Pre_Bureau_Risk_Category is Medium           | -| Y| N| N| N| N|
+Pre_Bureau_Risk_Category is Low              | -| -| Y| N| N| N|
+Pre_Bureau_Risk_Category is Very-Low         | -| -| -| Y| N| N|
+Pre_Bureau_Risk_Category is Decline          | -| -| -| -| Y| N|
+Then:                                        
+Bureau_Call_Type is FULL                     | X| X|  |  |  |  |
+Bureau_Call_Type is MINI                     |  |  | X|  |  |  |
+Bureau_Call_Type is NONE                     |  |  |  | X| X|  |
+# .......
+
+
+rTable 11: Post Bureau Risk Category: existing customer.
+If:                                          | 0| 1| 2| 3| 4| 5|
+Existing_Customer is True                    | Y| Y| Y| Y| Y| Y|
+Application_Risk_Score <= 100                | Y| Y| Y| N| N| N|
+Credit_Score <   580                         | Y| N| N| -| -| -|
+Credit_Score <=  600                         | -| Y| N| -| -| -|
+Credit_Score <   590                         | -| -| -| Y| N| N|
+Credit_Score <=  615                         | -| -| -| -| Y| N|
+Then:
+Post_Bureau_Risk_Category is High            | X|  |  | X|  |  |
+Post_Bureau_Risk_Category is Medium          |  | X|  |  | X|  |
+Post_Bureau_Risk_Category is Low             |  |  | X|  |  | X|
+# .......
+
+
+rTable 12: Post Bureau Risk Category: no existing customer.
+If:                                          | 0| 1| 2| 3| 4| 5| 6|
+Existing_Customer is True                    | N| N| N| N| N| N| N|
+Application_Risk_Score <  120                | Y| Y| Y| N| N| N| N|
+Application_Risk_Score <= 130                | -| -| -| Y| Y| Y| N|
+Credit_Score <   590                         | Y| N| N| -| -| -| -|
+Credit_Score <=  610                         | -| Y| N| -| -| -| -|
+Credit_Score <   600                         | -| -| -| Y| N| N| -|
+Credit_Score <=  625                         | -| -| -| -| Y| N| -|
+Then:                                                           
+Post_Bureau_Risk_Category is High            | X|  |  | X|  |  |  |
+Post_Bureau_Risk_Category is Medium          |  | X|  |  | X|  |  |
+Post_Bureau_Risk_Category is Low             |  |  | X|  |  | X|  |
+Post_Bureau_Risk_Category is Very-Low        |  |  |  |  |  |  | X|
+# .......
+
+
+
+rTable 13: Pre Bureau Risk Category: existing customer.
+If:                                          | 0| 1| 2| 3|
+Existing_Customer is True                    | Y| Y| Y| Y|
+Application_Risk_Score <   80                | Y| N| N| N|
+Application_Risk_Score <   90                | -| Y| N| N|
+Application_Risk_Score <= 110                | -| -| Y| N|   
+Then:
+Pre_Bureau_Risk_Category is Decline          | X|  |  |  |  
+Pre_Bureau_Risk_Category is High             |  | X|  |  |
+Pre_Bureau_Risk_Category is Medium           |  |  | X|  |
+Pre_Bureau_Risk_Category is Low              |  |  |  | X|
+# .......
+
+
+rTable 14: Pre Bureau Risk Category: no existing customer.
+If:                                          | 0| 1| 2| 3|
+Existing_Customer is True                    | N| N| N| N|
+Application_Risk_Score <  100                | Y| N| N| N|
+Application_Risk_Score <  120                | -| Y| N| N|
+Application_Risk_Score <= 130                | -| -| Y| N|   
+Then:
+Pre_Bureau_Risk_Category is High             | X|  |  |  |  
+Pre_Bureau_Risk_Category is Medium           |  | X|  |  |
+Pre_Bureau_Risk_Category is Low              |  |  | X|  |
+Pre_Bureau_Risk_Category is Very-Low         |  |  |  | X|
+# .......
+
+Attribute: Existing_Customer
+Askable_using: "Applicant is an existing customer?"
+
+
+Attribute: Application_Risk_Score
+Summation_of: Age_Risk_Score + Marital_Risk_Score + Employment_Risk_Score
+
+Table 15: Age Risk
+If:                            | 0| 1| 2| 3| 4| 5|
+Age <  18                      | Y| N| N| N| N| N|
+Age <= 21                      | -| Y| N| N| N| N|  
+Age <= 25                      | -| -| Y| N| N| N|
+Age <= 35                      | -| -| -| Y| N| N|
+Age <= 49                      | -| -| -| -| Y| N|
+Then:
+Age_Risk_Score = 0             | X|  |  |  |  |  |  
+Age_Risk_Score = 32            |  | X|  |  |  |  |
+Age_Risk_Score = 35            |  |  | X|  |  |  |
+Age_Risk_Score = 40            |  |  |  | X|  |  |
+Age_Risk_Score = 43            |  |  |  |  | X|  |
+Age_Risk_Score = 48            |  |  |  |  |  | X|
+# .......
+
+Attribute: Age
+Askable_using: "What is the age of the applicant?"
+
+
+rTable 16: Marital Risk
+If:                            | 0| 1|
+Marital_Status is S            | Y| N|
+Marital_Status is M            | -| Y|
+Then:
+Marital_Risk_Score = 25        | X|  |
+Marital_Risk_Score = 45        |  | X|
+# .......
+
+Attribute: Marital_Status
+Askable_using: "What is the marital status of the applicant?"
+
+
+Table 17: Employment Risk
+If:                                    | 0| 1| 2| 3| 4|
+Employment_Status is Unemployed        | Y| N| N| N| N|
+Employment_Status is Student           | -| Y| N| N| N|
+Employment_Status is Employed          | -| -| Y| N| N|
+Employment_Status is Self-Employed     | -| -| -| Y| N|
+Then:
+Employment_Risk_Score = 15             | X|  |  |  |  |
+Employment_Risk_Score = 18             |  | X|  |  |  |
+Employment_Risk_Score = 45             |  |  | X|  |  |
+Employment_Risk_Score = 36             |  |  |  | X|  |
+# .......
+
+Attribute: Employment_Status
+Askable_using: "What is the employment status of the applicant?"
+
+
+GoalProposition: 'Additional info'
+Print: "***************************************************************************************"
+Print: "Adjudication is: %s" Adjudication.getvalue
+Print: "Routing is: %s" Routing
+Print: "Strategy is: %s" Strategy
+Print: "Bureau Call Type: %s" Bureau_Call_Type.getvalue 
+Print: "Eligibility: %s" Eligibility.getvalue
+Print: "Pre Bureau Affordability: %s" Pre_Bureau_Affordability.getvalue
+Print: "Pre Bureau Risk Category: %s" Pre_Bureau_Risk_Category.getvalue
+Print: "Existing Customer: %s" Existing_Customer.getvalue
+Print: "Application Risk Score: %s" Application_Risk_Score
+Print: "= Age_Risk_Score(%s)+ Marital_Risk_Score(%s)+ Employment_Risk_Score(%s)" Age_Risk_Score Marital_Risk_Score Employment_Risk_Score
+Print: "Based on Age (%s), Marital Status (%s) and Employment Status (%s)" Age Marital_Status.getvalue Employment_Status.getvalue
+Print: "Pre Bureau Affordability Formula: %s" Pre_Bureau_Affordability_Formula
+Print: "Required Monthly Installment: %s"  Required_Monthly_Installment
+Print: "PMT: %s ; based on Amount: %s, Rate: %s, Term (in months): %s" PMT Amount Rate Term
+Print: "Monthly Fee = %s, because Product Type is: %s" Monthly_Fee Product_Type.getvalue
+Print: "Disposable Income: %s" Disposable_Income
+Print: ".. is Monthly Income: %s - (Monthly Repayments: %s + Monthly Expenses: %s)" Monthly_Income Monthly_Repayments Monthly_Expenses
+Print: "Pre Bureau Credit Contingency Factor: %s" Pre_Bureau_Credit_Contingency_Factor
+Print: "Post Bureau Affordability: %s" Post_Bureau_Affordability.getvalue
+Print: "Post Bureau Risk Category: %s" Post_Bureau_Risk_Category.getvalue
+Print: "Post Bureau Affordability Formula: %s" Post_Bureau_Affordability_Formula
+Print: "Post Bureau Credit Contingency Factor: %s" Post_Bureau_Credit_Contingency_Factor
+Print: "Bureau data: Banktrupt: %s" Banktrupt.getvalue
+Print: "Bureau data: Credit Score: %s" Credit_Score
+Print: "***************************************************************************************"
+
+
+
+
+
+
+
