@@ -12,9 +12,13 @@ Download and unpack: DT5GL FIFTH.rar
 Download and unpack: DT5GL SIXTH.rar
 Download all other files
 
+After correctly unpacking, the root folder contains 92 objects and that's including 
+the subfolders _pycache_, database, nose, numpy, psycopg2.  
+
 See: Demo - Help.txt
 Recommended tool: Notepad++
 
+Use DTFunctions.py to connect DT.exe to PostgreSQL and for custom python functions. 
 
 PS C:\..\..\DT5GL> .\DT.exe -h
 **************************************************************
