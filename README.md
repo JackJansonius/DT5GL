@@ -1,6 +1,8 @@
 # DT5GL
 DT5GL Demo Decision Intelligence Generator (5GL)
 
+(click on Code for better layout)
+
 Download and unpack: DT5GL FIRST.rar
 After that:
 Download and unpack: DT5GL SECOND.rar
@@ -14,7 +16,7 @@ See: Demo - Help.txt
 Recommended tool: Notepad++
 
 
-PS C:\Users\Administrator\DT5GL> .\DT.exe -h
+PS C:\..\..\DT5GL> .\DT.exe -h
 **************************************************************
 dt5gl-v3.83 rel.01/04/24 (Windows-Demoversion) -Available command-line arguments:
 '-h'    - this helptext.
