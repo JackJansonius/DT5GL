@@ -1,7 +1,15 @@
 # DT5GL
 DT5GL Demo Decision Intelligence Generator (5GL)
 
-(click on Code for better layout)
+(click on 'README.md' and Code for better layout)
+
+No pre-installation of Python (and/or SQLite) required; the decision intelligence generator DT.exe runs directly under Windows and the 37 sample scripts (see: 'Demo - Help.txt') can be executed immediately. 
+
+All sample scripts refer to: 
+https://dmcommunity.org/challenge/
+
+For a background of this approach see:
+https://dmcommunity.org/2021/09/02/is-sql-for-business-or-it/
 
 Download and unpack: DT5GL FIRST.rar
 After that:
@@ -18,7 +26,7 @@ the subfolders _pycache_, database, nose, numpy, psycopg2.
 See: Demo - Help.txt
 Recommended tool: Notepad++
 
-Use DTFunctions.py to connect DT.exe to PostgreSQL and for custom python functions. 
+Use DTFunctions.py to connect DT.exe to PostgreSQL and for custom Python functions. 
 
 PS C:\..\..\DT5GL> .\DT.exe -h
 **************************************************************
