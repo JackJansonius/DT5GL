@@ -22,14 +22,14 @@ For a background of this approach see:
 https://dmcommunity.org/2021/09/02/is-sql-for-business-or-it/
 
 #### Instructions for downloading and unpacking files:  
-1. **Download and unpack:** DT5GL FIRST.rar  
+1. Download and unpack: DT5GL FIRST.rar  
 After that:  
-2. **Download and unpack:** DT5GL SECOND.rar  
-3. **Download and unpack:** DT5GL THIRD.rar  
-4. **Download and unpack:** DT5GL FOURTH.rar  
-5. **Download and unpack:** DT5GL FIFTH.rar  
-6. **Download and unpack:** DT5GL SIXTH.rar  
-7. **Download all other files**
+2. Download and unpack: DT5GL SECOND.rar  
+3. Download and unpack: DT5GL THIRD.rar  
+4. Download and unpack: DT5GL FOURTH.rar  
+5. Download and unpack: DT5GL FIFTH.rar  
+6. Download and unpack: DT5GL SIXTH.rar  
+7. Download all other files
 
 Download can also be done at once with Download ZIP, but unpack in this order.
 After correctly unpacking, the root folder contains 92+ objects and that's including 
