@@ -1,17 +1,20 @@
 # DT5GL
 DT5GL Demo Decision Intelligence Generator (5GL)
 
-Decision Intelligence is a combination of Decision Tables (DT=5GL) and Database Query Language (SQL=4GL)
-oriented to business people instead of IT. So does not require knowledge of any 3GL programming language.
-
 (click on 'README.md' and Code for better layout)
 
-No pre-installation of Python (and/or SQLite) required; the decision intelligence generator DT.exe runs directly under Windows 
-and the 37 sample scripts (see: 'Demo - Help.txt') can be executed immediately. 
+Decision Intelligence is a combination of Decision Tables (5GL) and Database Query Language (SQL/4GL)
+oriented to business people instead of IT. So does not require knowledge of any 3GL programming language.
+
+![Decision Intelligence]("Decision Intelligence".jpg)
+
+No pre-installation of Python (and/or SQLite/PostgreSQL) required; the decision intelligence generator DT.exe runs directly under Windows and the 37 sample scripts (see: 'Demo - Help.txt') can be executed immediately. 
 
 DT.exe is python code (version 3.6.0), compiled to C code with Nuitka 2.0.2 (https://nuitka.net/) and thus a lot faster.
 If a virus scanner intervenes, the program can be safely restored from a vault or quarantine. Or disable your virus scanner for a while
 during Download Zip (at least my virus scanner is somewhat inconsistent in its intervention). 
+
+DT.exe connects directly to SQLite and PostgreSQL, but any other database or cloud platform can be built in upon request.  
 
 All sample scripts refer to: 
 https://dmcommunity.org/challenge/
