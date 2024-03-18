@@ -23,7 +23,6 @@ https://dmcommunity.org/2021/09/02/is-sql-for-business-or-it/
 
 #### Instructions for downloading and unpacking files:  
 1. Download and unpack: DT5GL FIRST.rar  
-After that:  
 2. Download and unpack: DT5GL SECOND.rar  
 3. Download and unpack: DT5GL THIRD.rar  
 4. Download and unpack: DT5GL FOURTH.rar  
@@ -31,9 +30,7 @@ After that:
 6. Download and unpack: DT5GL SIXTH.rar  
 7. Download all other files
 
-Download can also be done at once with Download ZIP, but unpack in this order.
-After correctly unpacking, the root folder contains 92+ objects and that's including 
-the subfolders _pycache_, database, nose, numpy, psycopg2.  
+Download can also be done at once with **Download ZIP** (see: drop down menu under the green '<> Code'-button): unpack the entire Zip file (110MB) in the target folder and unpack the 6 mentioned Zip files in the same target folder. After correctly unpacking, the target folder contains 92+ objects and that's including the subfolders _pycache_, database, nose, numpy, psycopg2.  
 
 See: Demo - Help.txt
 Recommended tool: Notepad++
