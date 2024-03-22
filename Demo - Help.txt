@@ -6,7 +6,7 @@ DEMO FILES
 See: https://dmcommunity.org/challenge/
 
 
-SQlite (Installation optional):
+SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
 
     Challenge Oct-2016 - Rebooking Passengers from Cancelled Flights
         SQLite_database: "Database/Flight1.sqlite"
