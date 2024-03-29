@@ -1,0 +1,234 @@
+
+
+-- Create PostgreSQL database "organ_donation_v2" based on SQLite DDL. 
+-- Only differences:
+-- SQLite datetime => PostgreSQL timestamp
+-- SQLite heart_offer_id integer PRIMARY KEY UNIQUE => PostgreSQL heart_offer_id  SERIAL PRIMARY KEY
+
+
+CREATE TABLE donor (donorid integer      PRIMARY KEY UNIQUE,
+                    name    varchar (50),
+                    email   varchar (30),
+                    city    varchar (30) ); 
+                    
+                    
+CREATE TABLE patient (patientid integer      PRIMARY KEY UNIQUE,
+                      name      varchar (30),
+                      email     varchar (30),
+                      city      varchar (30) );                     
+ 
+CREATE TABLE tc_availability_code (tc_availability_id          integer      PRIMARY KEY UNIQUE,
+                                   tc_availability_description varchar (30) ); 
+                                   
+CREATE TABLE transplant_center (transplant_center_id integer      PRIMARY KEY UNIQUE,
+                                name                 varchar (50),
+                                email                varchar (30),
+                                city                 varchar (30),
+                                tc_availability_id   integer      REFERENCES tc_availability_code (tc_availability_id) ); 
+
+
+CREATE TABLE organstatus (statusid          integer      PRIMARY KEY UNIQUE,
+                          status            varchar (15),
+                          statusdescription varchar (40) ); 
+
+
+CREATE TABLE patient_availability_code (availability_id          int          PRIMARY KEY UNIQUE,
+                                        availability_description varchar (100) ); 
+
+
+CREATE TABLE high_prio_heart_list (high_prio_heart_listid integer  PRIMARY KEY UNIQUE,
+                                   patient_id             int      REFERENCES patient (patientid),
+                                   placement_date         timestamp,
+                                   priority               int,
+                                   availability_id        int      REFERENCES patient_availability_code (availability_id) ); 
+
+CREATE TABLE high_prio_lung_list (high_prio_lung_listid integer  PRIMARY KEY UNIQUE,
+                                  patient_id            int      REFERENCES patient (patientid),
+                                  placement_date        timestamp,
+                                  priority              int,
+                                  availability_id       int      REFERENCES patient_availability_code (availability_id) ); 
+
+
+CREATE TABLE organ_block (organ_block_id          integer  PRIMARY KEY UNIQUE,
+                          donorid                 int      REFERENCES donor (donorid),
+                          heart_status            integer  REFERENCES organstatus (statusid),
+                          lung_status             integer  REFERENCES organstatus (statusid),
+                          organ_availability_date timestamp); 
+                          
+               
+
+
+CREATE TABLE response_code (response_id          int          PRIMARY KEY,
+                            response_description varchar (30) ); 
+
+
+CREATE TABLE heart_offer (heart_offer_id       SERIAL PRIMARY KEY,
+                          organ_block_id       int      REFERENCES organ_block (organ_block_id),
+                          patientid            int      REFERENCES patient (patientid),
+                          transplant_center_id int      REFERENCES transplant_center,
+                          offerdate            timestamp,
+                          responsedate         timestamp,
+                          response_id          int      REFERENCES response_code (response_id) ); 
+
+CREATE TABLE lung_offer (lung_offer_id        SERIAL PRIMARY KEY,
+                         organ_block_id       int      REFERENCES organ_block (organ_block_id),
+                         patientid            int      REFERENCES patient (patientid),
+                         transplant_center_id int      REFERENCES transplant_center,
+                         offerdate            timestamp,
+                         responsedate         timestamp,
+                         response_id          int      REFERENCES response_code (response_id) ); 
+
+
+INSERT INTO organstatus
+(
+    statusdescription,
+    status,
+    statusid
+)
+VALUES
+('Initial', 'Initial', 0),
+('Available for individual patients.', 'I-Available', 1),
+('Offered to an individual patient.', 'I-Offered', 2),
+('Accepted by an individual patient.', 'I-Accepted', 3),
+('Fallback', 'TC-Wait', 4),
+('Available for transplant centers.', 'TC-Available', 5),
+('Offered to a transplant center.', 'TC-Offered', 6),
+('Accepted by a transplant center.', 'TC-Accepted', 7),
+('Not accepted by any individual patient', 'NotAccepted', 8),
+('Not available', 'NotAvailable', 9),
+('Declined by an individual patient.', 'I-Declined', 10),
+('Assigned to an individual patient.', 'I-Assigned', 11),
+('Declined by a transplant center.', 'TC-Declined', 12),
+('Assigned to a transplant center.', 'TC-Assigned', 13);
+
+
+INSERT INTO patient_availability_code
+(
+    availability_description,
+    availability_id
+)
+VALUES
+('Initial', 0),
+('Available for an organ offer', 1),
+('Temporarily unavailable; an organ is currently being offered to the patient.', 2),
+('Temporarily unavailable; condition of the patient is currently insufficient', 3),
+('Definitely not available; patient has already accepted an organ.', 4),
+('Definitely not available; patient has passed away in the meantime', 5);
+
+
+INSERT INTO response_code
+(
+    response_description,
+    response_id
+)
+VALUES
+('Declined', 1),
+('Accepted', 2);
+
+
+INSERT INTO tc_availability_code
+(
+    tc_availability_description,
+    tc_availability_id
+)
+VALUES
+('Initial', 0),
+('Available for organ offer', 1),
+('Not available for organ offer', 2);
+
+
+INSERT INTO donor
+(
+    city,
+    email,
+    name,
+    donorid
+)
+VALUES
+('Zwolle', 'pattonelizabeth@yahoo.com', 'Chelsea Smith', 1),
+('Assen', 'tracy61@yahoo.com', 'Rachel Miller', 2),
+('Groningen', 'sylvia34@gmail.com', 'James Booth MD', 3),
+('Leeuwarden', 'jade41@clarke.info', 'Jacqueline Johnson DDS', 4),
+('Amsterdam', 'millsjonathan@campbell.come', 'Doris Harmon', 5),
+('Assen', 'jamessilva@arias-davis.com', 'Patricia Garza', 6),
+('Zwolle', 'nicole88@cortez.biz', 'Mrs. Jennifer Morrison MD', 7),
+('Amsterdam', 'erica18@williams-smith.org', 'Elaine Price', 8),
+('Assen', 'patrickvargas@hotmail.com', 'Jesus Watson', 9),
+('Groningen', 'bjackson@ward.biz', 'Krista Graves PhD', 10),
+('Leeuwarden', 'kevin69@reid-taylor.com', 'Brandon Cannon', 11);
+
+
+INSERT INTO patient
+(
+    city,
+    email,
+    name,
+    patientid
+)
+VALUES
+('Amsterdam', 'hoomas@phillips.com', 'Lawrence Peterson', 1),
+('Assen', 'wilicia@hotmail.com', 'Jeffrey Miller', 2),
+('Groningen', 'eather@campbell.com', 'Haley Marshall', 3),
+('Leeuwarden', 'derrick54@hotmail.com', 'Christopher Bryan', 4),
+('Meppel', 'jansen@worldonline.nl', 'Jan Jansen', 5),
+('Rotterdam', 'donna01@wilsrey.info', 'Michael King', 20),
+('Amsterdam', 'caleb50@gmail.com', 'Travis Carlson', 21),
+('Assen', 'gomehel@massey.com', 'Elizabeth Alvarez', 22),
+('Groningen', 'sierragray@roberts.com', 'Carrie Mullins', 23),
+('Leeuwarden', 'egoodwin@rojas.info', 'Elizabeth Owens', 24),
+('Meppel', 'edwarhotmail.com', 'Lori Copeland', 25),
+('Rotterdam', 'orrkrista@yahoo.com', 'Amanda Barnes', 26);
+
+
+
+INSERT INTO transplant_center
+(
+    tc_availability_id,
+    city,
+    email,
+    name,
+    transplant_center_id
+)
+VALUES
+(2, 'Rotterdam', 'MCW@hotmail.com', 'Medical Center West', 1),
+(2, 'Amsterdam', 'MCE@hotmail.com', 'Medical Center East', 2),
+(2, 'Groningen', 'MCN@hotmail.com', 'Medical Center North', 3),
+(0, 'Leeuwarden', 'ycarter@campbell.com', 'Medical Center Alex Ryan', 4),
+(0, 'Assen', 'hpetersen@thompson.com', 'Medical Center Tyler Powell', 5),
+(0, 'Meppel', 'vcastro@yahoo.com', 'Medical Center Leah Jenkins', 6),
+(0, 'Maastricht', 'randyrice@anderson.biz', 'Medical Center William Chandler', 7),
+(0, 'Den Bosch', 'pjames@gmail.com', 'Medical Center Lisa Rose', 8),
+(0, 'Groningen', 'lisataylor@yahoo.com', 'Medical Center Jeremy Richardson', 9);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                         
