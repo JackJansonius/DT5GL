@@ -1,0 +1,407 @@
+
+
+
+-- Create PostgreSQL database "soldier_payment_v1b" based on SQLite DDL.
+-- Differences: 
+-- SQLite real(2,2) => PostgreSQL  numeric(4,2)
+-- SQLite attributename: type => PostgreSQL ctype
+
+
+CREATE TABLE soldier (id              int          PRIMARY KEY,
+                      name            varchar (25),
+                      yearmonth_start int,
+                      yearmonth_end   int); 
+
+
+CREATE TABLE base (id          int          PRIMARY KEY,
+                   description varchar (15) ); 
+                   
+CREATE TABLE base_contract (soldierid int  REFERENCES soldier (id),
+                            ctype     int  REFERENCES base (id),
+                            date_from date,
+                            date_to   date); 
+
+CREATE TABLE base_rate (base_id   int         REFERENCES base (id),
+                        rate      numeric(4,2),
+                        date_from date,
+                        date_to   date); 
+
+CREATE TABLE combat (id          int          PRIMARY KEY,
+                     description varchar (15) ); 
+
+CREATE TABLE combat_contract (soldierid int  REFERENCES soldier (id),
+                              ctype     int  REFERENCES combat (id),
+                              date_from date,
+                              date_to   date); 
+
+CREATE TABLE combat_rate (combatid  int         REFERENCES combat (id),
+                          rate      numeric(4,2),
+                          date_from date,
+                          date_to   date);                               
+
+CREATE TABLE profession (id          int          PRIMARY KEY,
+                         description varchar (15) ); 
+
+CREATE TABLE profession_contract (soldierid int  REFERENCES soldier (id),
+                                  ctype     int  REFERENCES profession (id),
+                                  date_from date,
+                                  date_to   date); 
+
+CREATE TABLE profession_rate (professionid int         REFERENCES profession (id),
+                              rate         numeric(4,2),
+                              date_from    date,
+                              date_to      date); 
+
+CREATE TABLE rank (id          int          PRIMARY KEY,
+                   description varchar (15) ); 
+
+CREATE TABLE rank_contract (soldierid int  REFERENCES soldier (id),
+                            ctype     int  REFERENCES rank (id),
+                            date_from date,
+                            date_to   date); 
+                            
+CREATE TABLE rank_rate (rankid    int         REFERENCES rank (id),
+                        rate      numeric(4,2),
+                        date_from date,
+                        date_to   date); 
+
+CREATE TABLE service (id          int          PRIMARY KEY,
+                      description varchar (15) ); 
+
+CREATE TABLE service_contract (soldierid int  REFERENCES soldier (id),
+                               ctype     int  REFERENCES service (id),
+                               date_from date,
+                               date_to   date); 
+
+CREATE TABLE service_rate (service_id int         REFERENCES service (id),
+                           rate       numeric(4,2),
+                           date_from  date,
+                           date_to    date); 
+
+
+CREATE TABLE unit (id          int          PRIMARY KEY,
+                   description varchar (15) ); 
+
+CREATE TABLE unit_contract (soldierid int  REFERENCES soldier (id),
+                            ctype     int  REFERENCES unit (id),
+                            date_from date,
+                            date_to   date); 
+
+CREATE TABLE unit_rate (unitid    int         REFERENCES unit (id),
+                        rate      numeric(4,2),
+                        date_from date,
+                        date_to   date);                             
+
+
+INSERT INTO soldier
+(
+    yearmonth_end,
+    yearmonth_start,
+    name,
+    id
+)
+VALUES
+(201812, 201501, 'Not Retired', 1),
+(201512, 201501, 'Retired', 2),
+(201712, 201502, 'Regretting Retirement', 3),
+(201812, 201501, 'Gaps and Overlaps', 4);
+
+
+INSERT INTO base
+(
+    description,
+    id
+)
+VALUES
+('base', 1);
+
+INSERT INTO base_contract
+(
+    date_to,
+    date_from,
+    ctype,
+    soldierid
+)
+VALUES
+(NULL, '2015-01-01', 1, 1),
+(NULL, '2015-01-01', 1, 3),
+(NULL, '2015-01-01', 1, 4);
+
+INSERT INTO base_rate
+(
+    date_to,
+    date_from,
+    rate,
+    base_id
+)
+VALUES
+('2016-06-30', '2015-01-01', 1, 1),
+(NULL, '2016-07-01', 1.25, 1);
+
+
+INSERT INTO combat
+(
+    description,
+    id
+)
+VALUES
+('yes', 1),
+('no', 2);
+
+
+INSERT INTO combat_contract
+(
+    date_to,
+    date_from,
+    ctype,
+    soldierid
+)
+VALUES
+('2015-03-30', '2015-01-01', 2, 1),
+('2015-06-30', '2015-04-01', 1, 1),
+(NULL, '2015-07-01', 2, 1),
+('2015-03-30', '2015-01-01', 1, 3),
+('2015-06-30', '2015-04-01', 2, 3),
+(NULL, '2015-07-01', 1, 3),
+('2015-03-30', '2015-01-01', 2, 4),
+('2015-06-30', '2015-04-01', 1, 4),
+(NULL, '2015-07-01', 2, 4);
+
+INSERT INTO combat_rate
+(
+    date_to,
+    date_from,
+    rate,
+    combatid
+)
+VALUES
+('2016-06-30', '2015-01-01', 5, 1),
+(NULL, '2016-07-01', 5.5, 1),
+(NULL, '2015-01-01', 0, 2);
+
+
+INSERT INTO profession
+(
+    description,
+    id
+)
+VALUES
+('fighter', 1),
+('driver', 2),
+('cook', 3),
+('officer', 4);
+
+
+INSERT INTO profession_contract
+(
+    date_to,
+    date_from,
+    ctype,
+    soldierid
+)
+VALUES
+('2015-06-30', '2015-01-01', 1, 1),
+('2015-11-30', '2015-07-01', 3, 1),
+('2016-12-31', '2015-12-01', 2, 1),
+(NULL, '2017-01-01', 4, 1),
+('2015-06-30', '2015-01-01', 1, 3),
+('2015-11-30', '2015-07-01', 2, 3),
+('2016-12-31', '2015-12-01', 3, 3),
+(NULL, '2017-01-01', 4, 3),
+('2015-06-30', '2015-01-01', 1, 4),
+('2016-01-31', '2015-07-01', 3, 4),
+('2016-12-31', '2015-12-01', 2, 4),
+(NULL, '2017-01-01', 4, 4);
+
+
+INSERT INTO profession_rate
+(
+    date_to,
+    date_from,
+    rate,
+    professionid
+)
+VALUES
+('2016-06-30', '2015-01-01', 2, 1),
+(NULL, '2016-07-01', 2.5, 1),
+('2016-06-30', '2015-01-01', 1, 2),
+(NULL, '2016-07-01', 1.6, 2),
+('2016-06-30', '2015-01-01', 1, 3),
+(NULL, '2016-07-01', 1.5, 3),
+('2016-06-30', '2015-01-01', 3, 4),
+(NULL, '2016-07-01', 4, 4);
+
+
+INSERT INTO rank
+(
+    description,
+    id
+)
+VALUES
+('private', 1),
+('corporal', 2),
+('sergeant', 3),
+('lieutenant', 4),
+('captain', 5);
+
+
+INSERT INTO rank_contract
+(
+    date_to,
+    date_from,
+    ctype,
+    soldierid
+)
+VALUES
+('2015-12-31', '2015-01-01', 1, 1),
+('2016-12-31', '2016-01-01', 2, 1),
+(NULL, '2017-01-01', 3, 1),
+('2015-12-31', '2015-01-01', 5, 3),
+('2016-12-31', '2016-01-01', 4, 3),
+(NULL, '2017-01-01', 3, 3),
+('2015-11-30', '2015-01-01', 1, 4),
+('2017-01-31', '2016-02-01', 2, 4),
+(NULL, '2017-01-01', 3, 4);
+
+
+INSERT INTO rank_rate
+(
+    date_to,
+    date_from,
+    rate,
+    rankid
+)
+VALUES
+('2016-06-30', '2015-01-01', 1, 1),
+(NULL, '2016-07-01', 1.5, 1),
+('2016-06-30', '2015-01-01', 2, 2),
+(NULL, '2016-07-01', 2.5, 2),
+('2016-06-30', '2015-01-01', 3, 3),
+(NULL, '2016-07-01', 3.5, 3),
+('2016-06-30', '2015-01-01', 4, 4),
+(NULL, '2016-07-01', 4.5, 4),
+('2016-06-30', '2015-01-01', 5, 5),
+(NULL, '2016-07-01', 5.5, 5);
+
+
+INSERT INTO service
+(
+    description,
+    id
+)
+VALUES
+('active', 1),
+('reserve', 2),
+('retired', 3);
+
+
+INSERT INTO service_contract
+(
+    date_to,
+    date_from,
+    ctype,
+    soldierid
+)
+VALUES
+('2015-06-30', '2015-01-01', 1, 1),
+('2015-11-30', '2015-07-01', 2, 1),
+(NULL, '2015-12-01', 1, 1),
+(NULL, '2015-01-01', 3, 2),
+('2015-06-30', '2015-01-01', 1, 3),
+('2015-11-30', '2015-07-01', 3, 3),
+(NULL, '2015-12-01', 2, 3),
+('2015-06-30', '2015-01-01', 1, 4),
+('2015-12-31', '2015-07-01', 2, 4),
+(NULL, '2015-12-01', 1, 4);
+
+
+INSERT INTO service_rate
+(
+    date_to,
+    date_from,
+    rate,
+    service_id
+)
+VALUES
+('2016-06-30', '2015-01-01', 2, 1),
+(NULL, '2016-07-01', 2.5, 1),
+('2016-06-30', '2015-01-01', 1, 2),
+(NULL, '2016-07-01', 1.5, 2),
+(NULL, '2015-01-01', 0, 3);
+
+
+INSERT INTO unit
+(
+    description,
+    id
+)
+VALUES
+('HQ', 1),
+('others', 2);
+
+
+INSERT INTO unit_contract
+(
+    date_to,
+    date_from,
+    ctype,
+    soldierid
+)
+VALUES
+('2015-12-31', '2015-01-01', 1, 1),
+(NULL, '2016-01-01', 1, 1),
+('2015-12-31', '2015-01-01', 2, 3),
+(NULL, '2016-01-01', 1, 3),
+('2015-11-30', '2015-01-01', 1, 4),
+(NULL, '2016-01-01', 1, 4);
+
+
+INSERT INTO unit_rate
+(
+    date_to,
+    date_from,
+    rate,
+    unitid
+)
+VALUES
+('2016-06-30', '2015-01-01', 1, 1),
+(NULL, '2016-07-01', 1.5, 1),
+('2016-06-30', '2015-01-01', 2, 2),
+(NULL, '2016-07-01', 2.5, 2);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   
+                        
