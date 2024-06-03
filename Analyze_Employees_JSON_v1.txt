@@ -1,0 +1,119 @@
+
+
+
+Initial_instructions:
+>>: fn = read_json('Employees.json')           # read employees and selected_zip_codes
+>>: total_employees = len_employees()
+>>: single_employees = 0
+>>: total_children = 0
+>>: sum_salary = 0
+>>: max_salary = 0
+>>: min_salary = 10000000
+>>: high_salary = 0.8 * get_max_salary()
+>>: number_high_paid = 0
+>>: names_high_paid = ""
+End_Instructions
+
+
+
+Table 0: 
+If:                                            | 0| 1|
+next employee_nr in [0 - lastEmployee]         | Y| N|
+Then:
+Action is all_employees_handled                |  | X| 
+Action is update_data_employee                 | X|  |   
+# .......
+
+Attribute: lastEmployee  Type: Integer
+Equals: total_employees - 1
+
+rTable 1: 
+If:                                            | 0| 1| 2| 3|
+employee_status = "Single"                     | Y| -| -| -|
+employee_salary > max_salary                   | -| Y| -| -|                   
+employee_salary < min_salary                   | -| -| Y| -| 
+employee_salary >= high_salary                 | -| -| -| Y|
+Then:
+Action is increase_singles                     | X|  |  |  |
+Action is increase_max_salary                  |  | X|  |  |
+Action is decrease_min_salary                  |  |  | X|  |
+Action is add_to_high_paid_employees           |  |  |  | X|                                               
+# .......
+
+
+Attribute: employee_status  
+Equals: employee_attribute(employee_nr, "maritalStatus") 
+Attribute: employee_name       Type: Text
+Equals: employee_attribute(employee_nr, "name")
+Attribute: employee_salary     Type: Integer
+Equals: employee_attribute(employee_nr, "salary")
+Attribute: employee_children   Type: Integer
+Equals: employee_attribute(employee_nr, "children")
+
+Attribute: average_children    Type: Real
+Equals: total_children / total_employees
+
+Attribute: average_salary      Type: Real
+Equals: sum_salary / total_employees
+
+Attribute: residence_states    Type: Text
+Equals: get_states()
+
+Attribute: names_in_selected_zips  Type: Text
+Equals: get_employee_names_in_selected_zips()
+
+Attribute: fn                  Type: Integer
+Attribute: total_employees     Type: Integer
+Attribute: high_salary         Type: Integer
+
+Attribute: names_high_paid_print  Type: Text
+Equals:    sort_names_high_paid (names_high_paid[2:]) \
+           if names_high_paid != "" else "None"
+# [2:] => skip first ", "
+
+GoalAttribute: Action 
+Repeat_until: all_employees_handled 
+Multivalued_until: all_employees_handled
+
+Case: all_employees_handled
+Print: "Ready!"
+Print: "1. Total number of employees: %s"              total_employees 
+Print: "2. Total children: %s"                         total_children
+Print: "   Average children per employee: %s"          average_children
+Print: "3. Average salary: %s"                         average_salary
+Print: "   Maximal salary: %s"                         max_salary
+Print: "   Minimal salary: %s"                         min_salary
+Print: "4. Number of single employees: %s"             single_employees
+Print: "5. States where employees have residences: %s" residence_states
+Print: "6. Number of high paid employees (salary > %s): %s"   high_salary  number_high_paid
+Print: "   High-paid employees: %s"                    names_high_paid_print
+Print: "7. Employees living in selected zip codes: %s" names_in_selected_zips                  
+
+Case: update_data_employee
+Print: "Employee: %s - %s - %s - %s - %s"          employee_nr employee_name employee_salary employee_children employee_status
+>>: total_children = total_children + employee_children
+>>: sum_salary = sum_salary + employee_salary
+>>: fn = check_states(employee_nr)
+>>: fn = check_selected_zips(employee_nr)
+
+Case: increase_singles
+>>: single_employees = single_employees + 1 
+
+Case: increase_max_salary
+>>: max_salary = employee_salary
+
+Case: decrease_min_salary
+>>: min_salary = employee_salary
+
+Case: add_to_high_paid_employees
+>>: number_high_paid = number_high_paid + 1
+>>: names_high_paid = names_high_paid + ", " + employee_name + "(" + str(employee_salary) + ")"
+
+
+
+
+
+
+
+
+
