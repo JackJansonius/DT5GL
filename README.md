@@ -35,7 +35,7 @@ Download can also be done at once with **Download ZIP** (see: drop down menu und
 See: Demo - Help.txt
 Recommended tool: Notepad++
 
-Use DTFunctions.py to connect DT.exe to PostgreSQL and for custom Python functions. 
+**Use DTFunctions.py to connect DT.exe to PostgreSQL and for custom Python functions.** 
 
 PS C:\..\..\DT5GL> .\DT.exe -h
 
