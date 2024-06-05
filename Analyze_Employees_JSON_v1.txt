@@ -9,7 +9,7 @@ Initial_instructions:
 >>: sum_salary = 0
 >>: max_salary = 0
 >>: min_salary = 10000000
->>: high_salary = 8 * get_max_salary()
+>>: high_salary = 0.8 * get_max_salary()
 >>: number_high_paid = 0
 >>: names_high_paid = ""
 End_Instructions
