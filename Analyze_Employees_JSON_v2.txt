@@ -5,7 +5,7 @@
 #   List employees living in certain zip codes.
 
 Initial_instructions:
->>: fn = read_json('Employees.json')           # read employees and selected_zip_codes
+>>: fn = read_json('Employees.json')           # read employees and selected_zip_codes (DTFunctions.py)
 >>: total_employees = len_employees()
 >>: single_employees = 0
 >>: total_children = 0
@@ -122,8 +122,6 @@ Case: update_data_employee
 Print: "Employee: %s - %s - %s - %s - %s"          employee_nr employee_name employee_salary employee_children employee_status
 >>: total_children = total_children + employee_children
 >>: sum_salary = sum_salary + employee_salary
->>: fn = check_states(employee_nr)
->>: fn = check_selected_zips(employee_nr)
 
 Case: increase_singles
 >>: single_employees = single_employees + 1 
