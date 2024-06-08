@@ -101,6 +101,10 @@ Interactive (No database required).
         .\DT.exe -source:Gold_interactive.txt
         .\DT.exe -source:Gold_automated.txt
 
+    Challenge March-2024 - Analyzing Employees 
+        .\DT.exe -source:Analyze_Employees_JSON_v1.txt
+        .\DT.exe -source:Analyze_Employees_JSON_v2.txt
+
 
 
 
