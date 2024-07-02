@@ -1,0 +1,155 @@
+
+
+# 2 decision tables => 3 decision tables => 6 decision tables
+
+
+Initial_instructions:
+>>: fn = extract_claim('Claim.json')                          # read procedures and diagnoses (DTFunctions.py)
+>>: fn = extract_compatible_codes('CompatibleCodesPlus.csv')  # 
+>>: fn = extract_incompatible_codes('IncompatibleCodes.csv')  #
+>>: collected_procedures = ""                                 # procedures without (any!) compatible diagnoses
+>>: collected_incompatible_pairs = ""                         # incompatible Procedure–Diagnosis pairs
+End_Instructions
+
+
+rTable 0a: 
+If:                                            | 0|
+next procedure_nr in [0 - lastProcedure]       | N|
+Then:                                           
+Action is all_procedures_checked               | X|
+# .......
+# repeat until: all_procedures_checked
+
+rTable 0b: 
+If:                                            | 0|
+next procedure_nr                              | Y|
+Then:                                              
+Action is check_diagnoses                      | X|
+# .......
+  
+
+Attribute: lastProcedure     Type: Integer
+Equals: len_procedures() - 1
+
+rTable 1a: 
+If:                                                       | 0|
+next diagnosis_nr in [0 - lastDiagnosis]                  | N|
+True = procedure_type in ["X", "Y"]                       | Y|
+Then:                                                      
+Act_Diagnosis is all_diagnoses_handled_type_XY            | X|
+# .......
+# repeat until: all_diagnoses_handled_type_XY
+
+rTable 1b: 
+If:                                                       | 0|
+next diagnosis_nr                                         | Y|
+True = procedure_type in ["X", "Y"]                       | Y|
+True = CompatibleCodes(procedure_code, diagnosis_code)    | Y|
+Then:                                                         
+Act_Diagnosis is no_report_and_break                      | X|   
+# .......
+# repeat until: no_report_and_break
+
+
+rTable 2a: 
+If:                                                       | 0|
+next diagnosis_nr                                         | N|
+True = procedure_type in ["X", "Y"]                       | N|
+Then:                                                      
+Act_Diagnosis is all_diagnoses_handled_type_other         | X|
+# .......
+# repeat until: all_diagnoses_handled_type_other  
+
+
+rTable 2b: 
+If:                                                       | 0|
+next diagnosis_nr                                         | Y|
+procedure_type = "Z"                                      | Y|  
+True = InCompatibleCodes(procedure_code, diagnosis_code)  | Y|
+Then:                                                         
+Act_Diagnosis is report_incompatible_pair                 | X|
+# .......
+  
+
+
+
+
+Attribute: fn                Type: Integer
+Attribute: True              Type: Integer
+Equals: 1
+
+Attribute: lastDiagnosis     Type: Integer
+Equals: len_diagnoses() - 1
+
+Attribute: procedure_type   
+Equals: get_procedure_type_from_claim(procedure_nr)
+
+Attribute: procedure_code    Type: Text
+Equals: get_procedure_code_from_claim(procedure_nr)
+
+Attribute: diagnosis_code    Type: Text
+Equals: get_diagnosis_code_from_claim(diagnosis_nr)
+
+Attribute: collected_procedures_print   Type: Text
+Equals: collected_procedures[2:] if collected_procedures != "" else "None"
+# [2:] => skip first ", "
+
+Attribute: collected_incompatible_pairs_print  Type: Text
+Equals: collected_incompatible_pairs[2:] if collected_incompatible_pairs != "" else "None"
+
+
+GOALATTRIBUTE: Action 
+Repeat_until: all_procedures_checked 
+
+Case: all_procedures_checked 
+Print: "----------------------------------------------"
+Print: "Procedures without compatible diagnoses: %s"   collected_procedures_print
+Print: "Incompatible pairs: %s"                        collected_incompatible_pairs_print
+Print: "----------------------------------------------"
+
+Case: check_diagnoses
+Print: "#REM# - "
+     
+
+GOALATTRIBUTE: Act_Diagnosis
+Repeat_until: all_diagnoses_handled_type_XY, all_diagnoses_handled_type_other, no_report_and_break
+
+Case: all_diagnoses_handled_type_XY    
+>>: collected_procedures = collected_procedures + ", " + procedure_code
+
+Case: all_diagnoses_handled_type_other
+Print: "#REM# - "
+
+Case: no_report_and_break
+Print: "#REM# - "
+
+Case: report_incompatible_pair
+>>: collected_incompatible_pairs = collected_incompatible_pairs + ", " + procedure_code + "-" + diagnosis_code
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
