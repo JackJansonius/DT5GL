@@ -5,7 +5,7 @@
 # Name of database from the script via instruction PostgreSQL_database: "database name"
 psql_host="localhost"           # "127.0.0.1"
 psql_user="postgres1"
-psql_password="xxxxxxx"
+psql_password="******"
 psql_port="5432"                # defaults to 5432 if it is not provided
 
 
@@ -91,8 +91,68 @@ def newline():
 
 # END- functions for challenge: March-2024 Analyzing Employees #########################
 
+# functions for challenge: April-2024 Using Lookup Tables in Decision Models ###### 
+# https://dmcommunity.org/challenge/challenge-april-2024/
 
 
+import csv
+
+def load_json2(file_path):
+    with open(file_path, 'r') as file:
+        return json.load(file)
+
+
+def load_csv(file_path):
+    with open(file_path, 'r') as file:
+        reader = csv.reader(file)
+        return list(reader)
+
+def extract_claim(file_name):
+    global procedures, diagnoses
+    claim = load_json2(file_name)
+    procedures = claim['claim']['procedures']
+    diagnoses = claim['claim']['diagnoses']
+    return 1
+
+def extract_compatible_codes(file_name):
+    global compatible_codes
+    compatible_codes = load_csv(file_name)
+    # Convert compatible codes to list of lists
+    compatible_codes = [item for item in compatible_codes]    
+    return 1
+
+def extract_incompatible_codes(file_name):
+    global incompatible_ranges
+    incompatible_ranges = load_csv(file_name)           
+    # Convert incompatible ranges to list of lists
+    incompatible_ranges = [[item[0], item[1], item[2], item[3]] for item in incompatible_ranges]
+    return 1
+
+def len_procedures():
+    return len(procedures)
+    
+def len_diagnoses():
+    return len(diagnoses)
+    
+def get_procedure_type_from_claim(procedure_nr):
+    return procedures[procedure_nr]["type"]
+
+def get_procedure_code_from_claim(procedure_nr):
+    return procedures[procedure_nr]["code"]
+
+def get_diagnosis_code_from_claim(diagnosis_nr):
+    return diagnoses[diagnosis_nr]["code"]
+
+def CompatibleCodes(procedure_code, diagnose_code):
+    return [diagnose_code, procedure_code] in compatible_codes 
+
+def InCompatibleCodes(procedure_code, diagnose_code):   
+    for range_item in incompatible_ranges:   
+        if (range_item[0] <= procedure_code <= range_item[1]) and (range_item[2] <= diagnose_code <= range_item[3]):
+            return True
+    return False
+
+# END- functions for challenge: April-2024 Using Lookup Tables in Decision Models ######
 
 
 

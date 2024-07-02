@@ -63,6 +63,14 @@ SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
         SQLite_database: "Database/Soldier Payment2.db"
             .\DT.exe -source:Soldier_Payment_SQLite_V2.txt
 
+    Challenge April-2024 - Using Lookup Tables in Decision Models
+        CSV-files: CompatibleCodesPlus.csv, IncompatibleCodes.csv
+            .\DT.exe -source:Claim_JSON_v1.txt
+        
+        SQLite_database: "Database/CSV files.db"
+            .\DT.exe -source:Claim_JSON_v2.txt
+
+
 
 
 Interactive (No database required). 
