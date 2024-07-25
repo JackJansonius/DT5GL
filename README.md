@@ -7,7 +7,7 @@ oriented to business people instead of IT. So does not require knowledge of any 
 
 ![Decision Intelligence](Decision_Intelligence_v2.jpg)
 
-No pre-installation of Python (and/or SQLite/PostgreSQL) required; the decision intelligence generator DT.exe runs directly under Windows and the 37 sample scripts (see: 'Demo - Help.txt') can be executed immediately. 
+No pre-installation of Python (and/or SQLite/PostgreSQL) required; the decision intelligence generator DT.exe runs directly under Windows and the 37 sample scripts (**see: 'Demo - Help.txt'**) can be executed immediately. 
 
 DT.exe is python code (version 3.6.0), compiled to C code with Nuitka 2.0.2 (https://nuitka.net/) and thus a lot faster.
 If a virus scanner intervenes, the program can be safely restored from a vault or quarantine. Or disable your virus scanner for a while
