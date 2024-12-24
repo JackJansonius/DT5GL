@@ -1,0 +1,140 @@
+
+
+
+# PostgreSQL_database: "pricingpolicy"
+SQLite_database: "Database/PricingPolicy.sqlite3"
+
+
+Table 0: 
+If:                                              | 0| 1| 2| 3|
+'Next Order'                                     | Y| N| -| -|
+'Next Item in Order'                             | -| -| Y| N| 
+Then:                                                
+order is selected                                | X|  |  |  |
+order is finished                                |  | X|  |  | 
+item is selected                                 |  |  | X|  | 
+item is finished                                 |  |  |  | X|
+# .......
+
+
+Proposition: 'Next Order'
+Obtain_instance_from_database_view: order
+
+Proposition: 'Next Item in Order'
+Obtain_instance_from_database_view: orderItem
+
+
+Database_view: order
+With_attributes: id, description
+Query:
+ SELECT order_id, description
+ FROM client_order
+ LIMIT 1 OFFSET %s
+With_arguments: order.auto_index
+
+Database_view: orderItem
+With_attributes: ordernr, itemnr, product_type, number_of_units, origin_country, hazardous 
+Query:
+SELECT *
+ FROM order_item
+ WHERE order_id = %s
+ LIMIT 1 OFFSET %s
+With_arguments: order.id, orderItem.auto_index
+
+Attribute: orderItem.origin_country Type: Text
+
+
+rTable 1: 
+If:                                   | 0| 1| 2| 3| 4| 5|
+orderItem.product_type = "Standard"   | Y| Y| Y| N| N| N|
+orderItem.product_type = "Premium"    | -| -| -| Y| Y| Y|
+orderItem.number_of_units < 100       | Y| N| N| Y| N| N| 
+orderItem.number_of_units < 500       | -| Y| N| -| Y| N|
+Then:                                           
+price_per_unit = 10                   | X|  |  |  |  |  | 
+price_per_unit = 9                    |  | X|  |  |  |  | 
+price_per_unit = 8                    |  |  | X|  |  |  |
+price_per_unit = 15                   |  |  |  | X|  |  |
+price_per_unit = 14                   |  |  |  |  | X|  |
+price_per_unit = 13                   |  |  |  |  |  | X|
+# .......
+
+
+rTable 2:
+If:                                                     | 0| 1|
+True = orderItem.origin_country in ["US", "Canada"]     | Y| N|
+Then:                                                 
+handling_fee = 0                                        | X|  | 
+handling_fee = 50                                       |  | X| 
+# .......
+
+rTable 3:
+If:                                                     | 0| 1|
+orderItem.hazardous = "Yes"                             | Y| N|
+Then:                                                 
+surcharge = 1.3                                         | X|  | 
+surcharge = 1                                           |  | X| 
+# .......
+
+Initial_instructions:
+>>: True = 1             # define Boolean
+End_Instructions
+
+Attribute: total_item_price  Type: Real
+Equals: (orderItem.number_of_units * price_per_unit + handling_fee) * surcharge 
+
+Attribute: print_order_item  Type: Text
+Equals: str(orderItem.number_of_units) + " x " + str(price_per_unit)  \
+      + " + " + str(handling_fee) + " handling fee "                  \
+      + ("+ 30% hazardous " if orderItem.hazardous == "Yes" else "")  \
+      + "= $" + str(total_item_price)
+
+
+GOALATTRIBUTE: order 
+Repeat_until: finished 
+
+Case: finished
+Print: "All orders processed"
+
+Case: selected
+Print: "Order: %s - %s" order.id order.description
+>>: total_order_price = 0
+   
+
+GOALATTRIBUTE: item
+Repeat_until: finished
+
+Case: finished
+Print: "Total order price: $%s"  total_order_price 
+Print: "-------------------------------------------------------"   
+ 
+Case: selected
+Print: "%s" print_order_item
+>>: total_order_price = total_order_price + total_item_price
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

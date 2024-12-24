@@ -69,7 +69,12 @@ SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
         
         SQLite_database: "Database/CSV files.db"
             .\DT.exe -source:Claim_JSON_v2.txt
-
+            
+    Challenge Dec-2024 - Pricing Policy
+        SQLite_database: "Database/PricingPolicy.sqlite3"              /* Not included;                                 */
+        PostgreSQL_database: "pricingpolicy"                           /* make it yourself with: DB Pricing_Policy.txt  */
+            .\DT.exe -source:PricingPolicy_v1.txt
+            .\DT.exe -source:PricingPolicy_v2.txt
 
 
 

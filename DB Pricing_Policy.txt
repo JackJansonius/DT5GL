@@ -1,0 +1,61 @@
+
+
+
+
+CREATE TABLE client_order (order_id    int     PRIMARY KEY,
+                           description varchar); 
+                           
+
+INSERT INTO client_order
+(
+    description,
+    order_id
+)
+VALUES
+('Order in the challenge ', 1),
+('2x Order in the challenge', 2),
+('Order with 1 item', 3),
+('Order with some remaining test cases', 4);
+
+
+CREATE TABLE order_item (order_id           int     REFERENCES client_order (order_id),
+                         item_id            int,
+                         product_type       varchar,
+                         number_of_units    int,
+                         origin_country     varchar,
+                         hazardous_material varchar); 
+
+
+INSERT INTO order_item
+(
+    hazardous_material,
+    origin_country,
+    number_of_units,
+    product_type,
+    item_id,
+    order_id
+)
+VALUES
+('Yes', 'Germany', 200, 'Premium', 1, 1),
+('No', 'US', 50, 'Standard', 2, 1),
+('No', 'Canada', 200, 'Premium', 3, 1),
+('Yes', 'China', 150, 'Standard', 4, 1),
+('Yes', 'Germany', 200, 'Premium', 1, 2),
+('No', 'US', 50, 'Standard', 2, 2),
+('No', 'Canada', 200, 'Premium', 3, 2),
+('Yes', 'China', 150, 'Standard', 4, 2),
+('Yes', 'Germany', 200, 'Premium', 5, 2),
+('No', 'US', 50, 'Standard', 6, 2),
+('No', 'Canada', 200, 'Premium', 7, 2),
+('Yes', 'China', 150, 'Standard', 8, 2),
+('No', 'France', 500, 'Standard', 1, 3),
+('Yes', 'Canada', 99, 'Premium', 1, 4),
+('Yes', 'US', 500, 'Premium', 2, 4),
+('No', 'France', 99, 'Premium', 3, 4),
+('No', 'Germany', 500, 'Premium', 4, 4);
+
+
+
+
+
+                           
