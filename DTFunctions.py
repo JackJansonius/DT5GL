@@ -155,6 +155,40 @@ def InCompatibleCodes(procedure_code, diagnose_code):
 # END- functions for challenge: April-2024 Using Lookup Tables in Decision Models ######
 
 
+###################################################################################
+# functions for challenge: Jan-2025 Christmas Word Search ######################### 
+
+grid = [
+    "MMMSXXMASM",
+    "MSAMXMSMSA",
+    "AMXSXMAAMM",
+    "MSAMASMSMX",
+    "XMASAMXAMM",
+    "XXAMMXXAMA",
+    "SMSMSASXSS",
+    "SAXAMASAAA",
+    "MAMMMXMMMM",
+    "MXMXAXMASX"
+]
+
+def fgrid(x,y):
+    return grid[x][y]     # character on coordinate (line_nr, character_nr). 
+
+def get_grid_height(): 
+    return len(grid)      # number of lines in the grid. 
+    
+def get_grid_width():
+    return len(grid[0])   # number of characters on first line of the grid. 
+
+def is_word_at(x, y, dx, dy, word):
+    """Check if the word exists at the given starting point and direction."""
+    for i in range(len(word)):
+        nx, ny = x + i * dx, y + i * dy
+        if grid[nx][ny] != word[i]:
+            return False
+    return True
+
+# END- functions for challenge: Jan-2025 Christmas Word Search ####################
 
 
 

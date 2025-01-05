@@ -1,0 +1,181 @@
+
+
+
+
+Initial_instructions:
+>>: grid_height = get_grid_height()           # from DTFunctions.py                
+>>: grid_width  = get_grid_width()
+>>: lastLine = grid_height - 1
+>>: lastChar = grid_width - 1
+>>: word_to_find = "XMAS"
+>>: word_length = len(word_to_find)
+>>: total_found = 0
+>>: True = 1  
+End_Instructions
+
+
+rTable 0: Read next line 
+If:                                            | 0| 1|
+next line_nr in [0 - lastLine]                 | Y| N|
+Then:                                              
+Line is selected                               | X|  |
+Line is finished                               |  | X|
+# .......
+
+
+rTable 1: Read next character on line
+If:                                            | 0| 1|
+next char_nr in [0 - lastChar]                 | Y| N|
+Then:                                          
+Char is selected                               | X|  |
+Char is finished                               |  | X|
+# .......
+
+
+
+rTable 2: Skip if the current position is not the first letter of the word 
+If:                                                | 0|
+True = fgrid(line_nr,char_nr) != word_to_find[0]   | Y|
+Then:                                              
+Direction is skipped                               | X|
+# .......
+
+
+# Direction starting up-left and going clockwise.... 
+
+rTable 3: UP-LEFT, UP, UP-RIGHT
+If:                                                         | 0| 1| 2|
+True = line_nr - word_length >= -1                          | Y| Y| Y|
+True = char_nr - word_length >= -1                          | Y| -| -|
+True = char_nr + word_length <= grid_width                  | -| -| Y|
+True = is_word_at(line_nr, char_nr, -1, -1, word_to_find)   | Y| -| -|
+True = is_word_at(line_nr, char_nr, -1,  0, word_to_find)   | -| Y| -|
+True = is_word_at(line_nr, char_nr, -1,  1, word_to_find)   | -| -| Y|
+Then:                                                           
+Direction is UP-LEFT                                        | X|  |  |
+Direction is UP                                             |  | X|  |
+Direction is UP-RIGHT                                       |  |  | X|
+# .......
+
+rTable 4: RIGHT
+If:                                                         | 0|
+True = char_nr + word_length <= grid_width                  | Y|
+True = is_word_at(line_nr, char_nr,  0,  1, word_to_find)   | Y|
+Then:                                              
+Direction is RIGHT                                          | X|
+# .......
+
+
+rTable 5: DOWN-RIGHT, DOWN, DOWN-LEFT 
+If:                                                         | 0| 1| 2|
+True = line_nr + word_length <= grid_height                 | Y| Y| Y|
+True = char_nr + word_length <= grid_width                  | Y| -| -|
+True = char_nr - word_length >= -1                          | -| -| Y|
+True = is_word_at(line_nr, char_nr,  1,  1, word_to_find)   | Y| -| -|
+True = is_word_at(line_nr, char_nr,  1,  0, word_to_find)   | -| Y| -|
+True = is_word_at(line_nr, char_nr,  1, -1, word_to_find)   | -| -| Y|
+Then:                                                           
+Direction is DOWN-RIGHT                                     | X|  |  |
+Direction is DOWN                                           |  | X|  |
+Direction is DOWN-LEFT                                      |  |  | X|
+# .......
+
+
+rTable 6: LEFT
+If:                                                         | 0|
+True = char_nr - word_length >= -1                          | Y|
+True = is_word_at(line_nr, char_nr,  0, -1, word_to_find)   | Y|
+Then:                                                           
+Direction is LEFT                                           | X|
+# .......
+
+
+Attribute: grid_height   Type: Integer
+Attribute: grid_width    Type: Integer
+Attribute: lastLine      Type: Integer
+Attribute: lastChar      Type: Integer
+Attribute: word_length   Type: Integer
+
+
+GOALATTRIBUTE: Line
+Repeat_until: finished
+
+Case: finished
+Print: "Total Words Found: %s" total_found   
+
+Case: selected
+Print: "#REM# - "
+
+
+GOALATTRIBUTE: Char
+Repeat_until: finished
+
+Case: finished
+Print: "#REM# - "
+
+Case: selected
+Print: "#REM# - "
+
+     
+
+GOALATTRIBUTE: Direction
+Multivalued_until: skipped
+
+Case: skipped
+    Print: "#REM# - "
+
+Case: UP
+    Print: "Start: (%s, %s), Direction: (-1, 0) (Up) "                  line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: UP-RIGHT
+    Print: "Start: (%s, %s), Direction: (-1, 1) (Up-Right diagonal) "   line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: RIGHT
+    Print: "Start: (%s, %s), Direction: (0, 1) (Right) "                line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: DOWN-RIGHT
+    Print: "Start: (%s, %s), Direction: (1, 1) (Down-Right diagonal) "  line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: DOWN
+    Print: "Start: (%s, %s), Direction: (1, 0) (Down) "                 line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: DOWN-LEFT
+    Print: "Start: (%s, %s), Direction: (1, -1) (Down-Left diagonal) "  line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: LEFT
+    Print: "Start: (%s, %s), Direction: (0, -1) (Left) "                line_nr  char_nr
+    >>: total_found = total_found + 1
+Case: UP-LEFT
+    Print: "Start: (%s, %s), Direction: (-1, -1) (Up-Left diagonal) "   line_nr  char_nr
+    >>: total_found = total_found + 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

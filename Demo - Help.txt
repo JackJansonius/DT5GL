@@ -118,7 +118,12 @@ Interactive (No database required).
         .\DT.exe -source:Analyze_Employees_JSON_v1.txt
         .\DT.exe -source:Analyze_Employees_JSON_v2.txt
 
+    Challenge Jan-2025 - Christmas Word Search
+        .\DT.exe -source:xmas.txt -nti                                 /* also added code to DTFunctions.py */
 
+        
+        
+        
 
 
 
