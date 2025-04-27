@@ -1,0 +1,138 @@
+
+
+
+
+
+CREATE TABLE analyst (
+    id                  INTEGER PRIMARY KEY,
+    name                TEXT,
+    level               INTEGER,
+    amount_assigned     INTEGER,
+    number_assigned     INTEGER,
+    max_amount_per_case INTEGER,
+    max_total_amount    INTEGER
+);
+
+INSERT INTO analyst (id,name,"level",amount_assigned,number_assigned,max_amount_per_case,max_total_amount) 
+VALUES
+	 (1,'Tim Smith',10,35000000,12,50000000,75000000),
+	 (2,'Sue Rogers',5,5000000,10,1000000,7000000),
+	 (3,'Sam Howard',8,19000000,9,20000000,20000000),
+	 (4,'Jill Ryan',9,14700000,10,1500000,25000000),
+	 (5,'Debbie Smith',6,8000000,14,10000000,10000000),
+	 (6,'Debbie Bowers',7,6000000,8,1000000,7500000),
+	 (7,'Kevin Jones',4,2800000,8,3000000,3000000),
+	 (8,'Roger Howland',2,850000,7,300000,1000000);
+
+
+CREATE TABLE area (
+    id   INTEGER PRIMARY KEY,
+    name TEXT
+);
+
+INSERT INTO area (id, name) 
+VALUES
+     (1, 'Technology'),
+     (2, 'Research'),
+     (3, 'Construction');
+
+
+CREATE TABLE analyst_area (
+    analyst_id INTEGER REFERENCES analyst (id),
+    area_id    INTEGER REFERENCES area (id) 
+);
+
+INSERT INTO analyst_area (analyst_id,area_id) 
+VALUES
+	 (1,1), (1,2), (1,3),
+	 (2,1), (2,2),
+	 (3,2), (3,3),
+	 (4,1), (4,2), (4,3),
+	 (5,1), (5,2),
+	 (6,1), (6,2),
+	 (7,1), (7,2),
+	 (8,1), (8,3);
+
+
+CREATE TABLE cases (
+    id         INTEGER PRIMARY KEY,
+    amount     INTEGER,
+    complexity INTEGER,
+    area_id    INTEGER REFERENCES area (id) 
+);
+
+INSERT INTO cases (id,amount,complexity,area_id) 
+VALUES
+	 (112,50000,3,1),
+	 (113,200000,1,1),
+	 (114,1500000,4,3),
+	 (115,300000,4,2);
+
+
+CREATE TABLE complexity (
+    level   INTEGER,
+    minimum INTEGER,
+    maximum INTEGER
+);
+
+INSERT INTO complexity ("level",minimum,maximum) 
+VALUES
+	 (1,1,2),
+	 (2,1,2),
+	 (3,1,2),
+	 (4,1,3),
+	 (5,2,3),
+	 (6,2,4),
+	 (7,2,4),
+	 (8,3,4),
+	 (9,3,5),
+	 (10,4,5);
+
+
+CREATE TABLE case_assignment (
+    case_id         INTEGER PRIMARY KEY,
+    case_amount     INTEGER,
+    case_complexity INTEGER,
+    area_name       TEXT,
+    analyst_id      INTEGER,
+    analyst_name    TEXT,
+    analyst_level   INTEGER,
+    overqualification INTEGER
+);
+
+
+CREATE TABLE x_analyst (
+    id                  INTEGER PRIMARY KEY,
+    name                TEXT,
+    level               INTEGER,
+    amount_assigned     INTEGER,
+    number_assigned     INTEGER,
+    max_amount_per_case INTEGER,
+    max_total_amount    INTEGER
+);
+
+INSERT INTO x_analyst (id,name,"level",amount_assigned,number_assigned,max_amount_per_case,max_total_amount) 
+VALUES
+	 (1,'Tim Smith',10,35000000,12,50000000,75000000),
+	 (2,'Sue Rogers',5,5000000,10,1000000,7000000),
+	 (3,'Sam Howard',8,19000000,9,20000000,20000000),
+	 (4,'Jill Ryan',9,14700000,10,1500000,25000000),
+	 (5,'Debbie Smith',6,8000000,14,10000000,10000000),
+	 (6,'Debbie Bowers',7,6000000,8,1000000,7500000),
+	 (7,'Kevin Jones',4,2800000,8,3000000,3000000),
+	 (8,'Roger Howland',2,850000,7,300000,1000000);
+
+
+CREATE TABLE x_cases (
+    id         INTEGER PRIMARY KEY,
+    amount     INTEGER,
+    complexity INTEGER,
+    area_id    INTEGER
+);
+
+INSERT INTO x_cases (id,amount,complexity,area_id) 
+VALUES
+	 (112,50000,3,1),
+	 (113,200000,1,1),
+	 (114,1500000,4,3),
+	 (115,300000,4,2);

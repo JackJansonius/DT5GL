@@ -1,0 +1,187 @@
+  
+
+
+
+
+# SQLite_database: "Database/analystcase.sqlite3"
+PostgreSQL_database: "analystcase"
+
+
+Table 0: 
+If:                                              | 0| 1|
+'Next Case'                                      | Y| N|
+Then:                                                
+case is selected                                 | X|  |
+case is finished                                 |  | X| 
+# .......
+
+
+rTable 1: 
+If:                                                                  | 0| 1| 2| 3|
+'Next Analyst'                                                       | Y| Y| N| N|
+'Case Area in Analyst Focus Areas'                                   | Y| -| -| -|
+case.amount <= analyst.max_amount_per_case                           | Y| -| -| -|
+case.amount <= analyst.max_total_amount - analyst.amount_assigned    | Y| -| -| -|
+case.complexity >= analystlevel.minimum                              | Y| -| -| -|    
+case.complexity <= analystlevel.maximum                              | Y| -| -| -|
+current_overqualification > analyst.level - case.complexity          | Y| -| -| -|
+current_analyst_name = ""                                            | -| -| Y| N|
+Then:                                                                
+analyst is swap                                                      | X|  |  |  |
+analyst is noswap                                                    |  | X|  |  |
+analyst is notfound                                                  |  |  | X|  |
+analyst is found                                                     |  |  |  | X|
+# .......
+
+Proposition: 'Next Case'
+Obtain_instance_from_database_view: case
+
+Proposition: 'Next Analyst'
+Obtain_instance_from_database_view: analyst
+
+Proposition: 'Case Area in Analyst Focus Areas'
+Obtain_instance_from_database_view: samefocusarea
+
+
+Database_view: case
+With_attributes: id, amount, complexity, area_id 
+Query:
+ SELECT * FROM cases ORDER BY complexity ASC, amount ASC
+ LIMIT 1 OFFSET %s
+With_arguments: case.auto_index
+
+
+Database_view: analyst
+With_attributes: id, name, level, amount_assigned, number_assigned, max_amount_per_case, max_total_amount  
+Query:
+ SELECT * FROM analyst ORDER BY id ASC
+ LIMIT 1 OFFSET %s
+With_arguments: analyst.auto_index
+
+
+Database_view: samefocusarea
+With_attributes: id 
+Query:
+SELECT area.id
+FROM cases
+     JOIN area ON cases.area_id = area.id
+     JOIN analyst_area ON area.id = analyst_area.area_id
+WHERE cases.id= %s AND analyst_area.analyst_id= %s
+With_arguments: case.id, analyst.id
+
+
+Database_view: analystlevel
+With_attributes: minimum, maximum  
+Query:
+ SELECT minimum, maximum FROM complexity 
+ WHERE level = %s
+With_arguments: analyst.level
+
+
+Database_view: case_area
+With_attributes: name  
+Query:
+ SELECT name FROM area 
+ WHERE id = %s
+With_arguments: case.area_id
+
+
+
+
+Attribute: analyst.max_amount_per_case  Type: Integer
+Attribute: analyst.max_total_amount     Type: Integer
+Attribute: analyst.amount_assigned      Type: Integer
+Attribute: analystlevel.maximum         Type: Integer
+Attribute: analystlevel.minimum         Type: Integer
+Attribute: analyst.level                Type: Integer
+Attribute: analyst.id                   Type: Integer
+Attribute: analyst.name                 Type: Text
+Attribute: case.amount                  Type: Integer
+Attribute: case.complexity              Type: Integer
+
+
+Initial_instructions:
+>>: total_overqualification = 0
+End_Instructions
+
+Initial_database_setup: delete case assignements
+Query:
+   DELETE FROM case_assignment
+End_Query
+
+
+GOALATTRIBUTE: case 
+Repeat_until: finished 
+
+Case: finished
+Print: "Total overqualification: %s. " total_overqualification
+
+Case: selected
+>>: current_analyst_id = 0
+>>: current_analyst_name = ""    
+>>: current_analyst_level = 0   
+>>: current_overqualification = 999
+   
+
+GOALATTRIBUTE: analyst
+Repeat_until: notfound, found
+
+Case: swap
+>>: current_analyst_id = analyst.id
+>>: current_analyst_name = analyst.name    
+>>: current_analyst_level = analyst.level   
+>>: current_overqualification = analyst.level - case.complexity
+
+Case: noswap
+Print: "#REM# - Do nothing"
+
+Case: notfound
+Print: "No analyst found for case: %s." case.id
+
+Case: found
+Print: "Analyst %s. %s assigned to case %s with overqualification: %s" current_analyst_id current_analyst_name case.id current_overqualification 
+>SQL:  "UPDATE analyst " 
+-SQL:  "   SET amount_assigned = amount_assigned + %s, "  case.amount
+-SQL:  "       number_assigned = number_assigned + 1 "       
+<SQL:  " WHERE id = %s "                                  current_analyst_id
+
+>SQL:  "INSERT INTO case_assignment " 
+-SQL:  "(case_id, case_amount, case_complexity, area_name, analyst_id, analyst_name, analyst_level, overqualification) "
+-SQL:  "VALUES (%s, "  case.id
+-SQL:  "%s, " case.amount
+-SQL:  "%s, " case.complexity
+-SQL:  " '%s', " case_area.name
+-SQL:  "%s, " current_analyst_id
+-SQL:  " '%s', " current_analyst_name
+-SQL:  "%s, " current_analyst_level
+<SQL:  "%s) " current_overqualification
+
+>>: total_overqualification = total_overqualification + current_overqualification
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

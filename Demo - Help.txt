@@ -5,6 +5,7 @@ DEMO FILES
 
 See: https://dmcommunity.org/challenge/
 
+Latest update: 27 April 2025
 
 SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
 
@@ -75,6 +76,12 @@ SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
         PostgreSQL_database: "pricingpolicy"                           /* make it yourself with: DB Pricing_Policy.txt  */
             .\DT.exe -source:PricingPolicy_v1.txt
             .\DT.exe -source:PricingPolicy_v2.txt
+
+	Challenge April-2025 - Case Assignments 
+        SQLite_database: "Database/analystcase.sqlite3"                /* Not included;                                          */
+        PostgreSQL_database: "analystcase"                             /* make it yourself with: AnalystCase database setup.txt  */
+			.\DT.exe1 -source:AnalystCase.txt -nti
+
 
 
 
