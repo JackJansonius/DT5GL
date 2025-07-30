@@ -67,7 +67,7 @@ SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
     Challenge April-2024 - Using Lookup Tables in Decision Models
         CSV-files: CompatibleCodesPlus.csv, IncompatibleCodes.csv
             .\DT.exe -source:Claim_JSON_v1.txt
-        
+     
         SQLite_database: "Database/CSV files.db"
             .\DT.exe -source:Claim_JSON_v2.txt
             
@@ -77,10 +77,16 @@ SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
             .\DT.exe -source:PricingPolicy_v1.txt
             .\DT.exe -source:PricingPolicy_v2.txt
 
-	Challenge April-2025 - Case Assignments 
+    Challenge April-2025 - Case Assignments                          
         SQLite_database: "Database/analystcase.sqlite3"                /* Not included;                                          */
         PostgreSQL_database: "analystcase"                             /* make it yourself with: AnalystCase database setup.txt  */
-			.\DT.exe1 -source:AnalystCase.txt -nti
+            .\DT.exe -source:AnalystCase.txt -nti
+
+    Challenge July-2025 - Rules with Regular Expressions
+        SQLite_database: "Database/courses.sqlite3"
+        PostgreSQL_database: "courses"
+            .\DT.exe -source:Wildcards_v1.txt
+            .\DT.exe -source:Wildcards_v2.txt
 
 
 

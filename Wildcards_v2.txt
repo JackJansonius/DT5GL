@@ -1,0 +1,114 @@
+  
+
+
+# SQLite_database: "Database/courses.sqlite3"
+PostgreSQL_database: "courses"
+
+rTable 0: 
+If:                              | 0| 1| 2| 3| 4| 5|
+'Next Course'                    | Y| Y| Y| Y| Y| N|
+Degree_Code = "MA Single"        | Y| Y| -| -| -| -|
+Course_Code = "MA52#"            | Y| -| -| -| -| -|
+Course_Code = "MA62#"            | -| Y| -| -| -| -|
+Degree_Code = "CS%"              | -| -| N| N| -| -|    
+Course_Code = "CS%288%"          | -| -| Y| -| -| -|
+Course_Code = "CS%289%"          | -| -| -| Y| -| -|
+Then:                                            
+course is allowed                | X| X|  |  |  |  |
+course is not_allowed            |  |  | X| X|  |  |
+course is not_classified         |  |  |  |  | X|  |
+course is finished               |  |  |  |  |  | X|
+# .......
+# 
+
+Attribute: Degree_Code
+Equals: "MA Single" if course.degree_code == "MA Single"  else  \
+        "CS%"       if like(course.degree_code, "CS%")    else  \
+		""
+
+Attribute: Course_Code
+Equals: "MA52#"     if like(course.course_code, "MA52#")    else  \
+        "MA62#"     if like(course.course_code, "MA62#")    else  \
+		"CS%288%"   if like(course.course_code, "CS%288%")  else  \
+		"CS%289%"   if like(course.course_code, "CS%289%")  else  \
+        ""
+
+Proposition: 'Next Course'
+Obtain_instance_from_database_view: course
+
+Database_view: course
+With_attributes: degree_code, course_code
+Query:
+ SELECT * FROM course
+ LIMIT 1 OFFSET %s
+With_arguments: course.auto_index
+
+
+Initial_instructions:
+>>: true = 1
+>>: allowed_courses = ""
+>>: not_allowed_courses = ""
+>>: not_classified_courses = ""
+End_Instructions
+
+
+# Attribute: found_course
+# Equals: ", (" + course.degree_code + "," + course.course_code + ")"
+
+Attribute: course.degree_code Type: Text
+Attribute: course.course_code Type: Text
+
+# discard leading ", "
+Attribute: print_allowed         Type: Text
+Equals: allowed_courses[2:] if allowed_courses else "None"
+Attribute: print_not_allowed     Type: Text
+Equals: not_allowed_courses[2:] if not_allowed_courses else "None"
+Attribute: print_not_classified  Type: Text
+Equals: not_classified_courses[2:] if not_classified_courses else "None"
+
+
+GOALATTRIBUTE: course 
+Repeat_until: finished 
+
+Case: finished
+Print: "Allowed courses: %s. " print_allowed
+Print: "Not allowed courses: %s. " print_not_allowed
+Print: "Not classified courses: %s. " print_not_classified
+
+Case: allowed
+>>: allowed_courses = allowed_courses + ", (" + course.degree_code + "," + course.course_code + ")"
+
+Case: not_allowed
+>>: not_allowed_courses = not_allowed_courses + ", (" + course.degree_code + "," + course.course_code + ")"
+
+Case: not_classified
+>>: not_classified_courses = not_classified_courses + ", (" + course.degree_code + "," + course.course_code + ")"
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

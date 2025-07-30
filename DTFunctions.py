@@ -191,6 +191,63 @@ def is_word_at(x, y, dx, dy, word):
 # END- functions for challenge: Jan-2025 Christmas Word Search ####################
 
 
+###################################################################################
+# functions for challenge: July-2025 Rules with Regular Expressions ############### 
+
+# def like(text, pattern):
+    # """
+    # Implements wildcard matching similar to SQL LIKE operator.
+    # Supports % for any sequence of characters and # for any single character.
+    
+    # Args:
+        # text (str): The text to match against
+        # pattern (str): The wildcard pattern
+        
+    # Returns:
+        # bool: True if text matches the pattern
+    # """
+
+    # # Escape regex special characters except our wildcards
+    # pattern = re.escape(pattern.replace('%', '\x00').replace('#', '\x01'))
+    # pattern = pattern.replace('\x00', '.*').replace('\x01', '.')
+    
+    # # Match entire string
+    # return bool(re.fullmatch(pattern, text))
+    
+
+def like(text, pattern):
+    """
+    DeepSeek:
+    Alternative implementation that handles Nuitka compilation better.
+    This solution should work consistently whether running in Python directly 
+    or when compiled with Nuitka. The key is to avoid relying on re.escape() 
+    for your wildcard patterns and instead handle the conversion manually.
+    """
+    # First convert pattern to a regex string
+    regex = []
+    i = 0
+    while i < len(pattern):
+        if pattern[i] == '%':
+            regex.append('.*')
+            i += 1
+        elif pattern[i] == '#':
+            regex.append('.')
+            i += 1
+        else:
+            # Escape regex special characters
+            if pattern[i] in r'.^$*+?{}[]\|()':
+                regex.append('\\')
+            regex.append(pattern[i])
+            i += 1
+    
+    try:
+        return bool(re.fullmatch(''.join(regex), text))
+    except re.error:
+        return False
+
+# END- functions for challenge: July-2025 Rules with Regular Expressions ##########   
+
+
 
 
 
