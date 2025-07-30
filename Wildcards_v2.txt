@@ -24,13 +24,13 @@ course is finished               |  |  |  |  |  | X|
 Attribute: Degree_Code
 Equals: "MA Single" if course.degree_code == "MA Single"  else  \
         "CS%"       if like(course.degree_code, "CS%")    else  \
-		""
+        ""
 
 Attribute: Course_Code
 Equals: "MA52#"     if like(course.course_code, "MA52#")    else  \
         "MA62#"     if like(course.course_code, "MA62#")    else  \
-		"CS%288%"   if like(course.course_code, "CS%288%")  else  \
-		"CS%289%"   if like(course.course_code, "CS%289%")  else  \
+        "CS%288%"   if like(course.course_code, "CS%288%")  else  \
+        "CS%289%"   if like(course.course_code, "CS%289%")  else  \
         ""
 
 Proposition: 'Next Course'
