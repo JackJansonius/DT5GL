@@ -1,0 +1,105 @@
+
+
+# Quick expertsystem-style prototype
+
+rTable 0: Determine patient therapy
+If:                                        | 0| 1| 2|
+'Doctor has determined Acute Sinusitus'    | Y| Y| N|
+Medication <> ""                           | Y| Y| -|
+Dosage is Half                             | Y| N| -|
+Dosage is Full                             | -| Y| -|
+Then:                                               
+Therapy is Half_Dosage                     | X|  |  |
+Therapy is Full_Dosage                     |  | X|  |
+Therapy is Not_Applicable                  |  |  | X|
+# .......
+
+Proposition: 'Doctor has determined Acute Sinusitus'
+Askable_using: "**?"
+
+
+Table 1: Determine Medication
+If:                                        | 0| 1| 2|
+'Patient is allergic to Penicillin'        | Y| N| N|
+Age >= 18                                  | -| Y| N|
+Then:
+Medication = "Levofloxacin"                | X|  |  |
+Medication = "Amoxicillin"                 |  | X|  |
+Medication = "Cefuroxime"                  |  |  | X|
+# .......
+
+Proposition: 'Patient is allergic to Penicillin'
+Askable_using: "**?"
+
+
+Table 2: Determine Dosage
+If:                                        | 0| 1| 2| 3| 4|
+Age < 15                                   | Y| N| N| N| N|
+Age > 60                                   | -| Y| N| N| N|
+Patient_Creatinine_Level > 1.4             | -| -| Y| Y| N|               
+Patient_Creatinine_Clearance < 50.0        | -| -| Y| N| -|
+Then:                                                   
+Dosage is Half                             | X| X| X|  |  |
+Dosage is Full                             |  |  |  | X| X|
+# .......
+
+
+rTable 3: Drug interaction
+If:                                        | 0| 1|
+'Doctor has determined Acute Sinusitus'    | Y| Y|
+Medication = "Levofloxacin"                | Y| -|
+Medication = "Cefuroxime"                  | -| Y|
+Active_Medication is Coumadin              | Y| Y|
+Then:                                          
+'Drug interaction warning'                 | X| X|
+# .......
+
+
+GoalAttribute: Therapy
+Case: Full_Dosage
+Print: "---------------------------------------------------------"                   
+Print: "Recommended Medication: %s." Medication              
+Print: "500mg every 24 hours for 14 days"
+Print: "---------------------------------------------------------"
+Print: "Calculated Creatinine Clearance: %s" Patient_Creatinine_Clearance.getvalue
+
+Case: Half_Dosage
+Print: "---------------------------------------------------------"                   
+Print: "Recommended Medication: %s." Medication              
+Print: "250mg every 24 hours for 14 days"
+Print: "---------------------------------------------------------"
+Print: "Calculated Creatinine Clearance: %s" Patient_Creatinine_Clearance.getvalue
+
+Case: Not_Applicable
+Print: "---------------------------------------------------------"                  
+Print: "Sorry, this decision model can handle only Acute Sinusitus "
+Print: "---------------------------------------------------------"
+
+
+GoalProposition: 'Drug interaction warning'  
+Print: "Warning: Coumadin and %s can result in reduced effectiveness of Coumadin."  Medication
+
+Attribute: Active_Medication
+Askable_using: "Is the patient on medication now?"
+
+Attribute: Age
+Askable_using: "What is the years of age of the patient?"
+
+Attribute: Weight    Type: Real
+Askable_using: "What is the weight of the patient?"
+
+Attribute: Patient_Creatinine_Level 
+Askable_using: "What is the creatine level of the patient?"
+
+Attribute: Patient_Creatinine_Clearance
+Equals: round((140 - Age) * Weight / (Patient_Creatinine_Level*72), 2)
+
+
+
+                      
+                   
+                      
+
+
+
+  

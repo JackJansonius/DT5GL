@@ -5,7 +5,7 @@ DEMO FILES
 
 See: https://dmcommunity.org/challenge/
 
-Latest update: 27 April 2025
+Latest update: 13 May 2026
 
 SQlite (installation optional, but recommended: https://sqlitestudio.pl/):
 
@@ -134,7 +134,11 @@ Interactive (No database required).
     Challenge Jan-2025 - Christmas Word Search
         .\DT.exe -source:xmas.txt -nti                                 /* also added code to DTFunctions.py */
 
-        
+    Challenge April-2026 - Agentic Medical Services
+        .\DT.exe -source:sinusitis_therapy_v1.txt   -nti               /* interactive */
+        SQLite_database: "database/sinusitus.db"
+        PostgreSQL_database: "sinusitus"                               /* also added code to DTFunctions.py */
+            .\DT.exe -source:sinusitis_therapy_v2.txt   -nti           /* interactive with 1-table database */ 
         
         
 

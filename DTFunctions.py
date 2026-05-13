@@ -4,7 +4,7 @@
 # Settings for connection to PosgreSQL database. 
 # Name of database from the script via instruction PostgreSQL_database: "database name"
 psql_host="localhost"           # "127.0.0.1"
-psql_user="postgres1"
+psql_user="postgres"
 psql_password="******"
 psql_port="5432"                # defaults to 5432 if it is not provided
 
@@ -154,7 +154,6 @@ def InCompatibleCodes(procedure_code, diagnose_code):
 
 # END- functions for challenge: April-2024 Using Lookup Tables in Decision Models ######
 
-
 ###################################################################################
 # functions for challenge: Jan-2025 Christmas Word Search ######################### 
 
@@ -248,11 +247,162 @@ def like(text, pattern):
 # END- functions for challenge: July-2025 Rules with Regular Expressions ##########   
 
 
+###################################################################    
+# functions for challenge: Apr-2026 Agentic Medical Services ###### 
+# https://dmcommunity.org/challenge-apr-2026/                ######
+###################################################################
+ 
+
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
+
+def actual_age(actual_date, date_of_birth):           # date formats: 'yyyy-mm-dd'
+    u = datetime.strptime(actual_date, "%Y-%m-%d").date()   
+    g = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+    return relativedelta(u, g).years
 
 
+def date_today():                   # Return today's date in the format 'yyyy-mm-dd' 
+    return date.today().strftime("%Y-%m-%d")                
+
+def print_texts(*texts):
+    print(*texts, sep="")
+    return 1
+    
 
 
+# ---------------------------------------------------------------------------
+# DRUG INTERACTION CHECKER   FROM Claude (Sonnet 4.6)
+# ---------------------------------------------------------------------------
+
+import os
+import sys
+
+if sys.platform == "win32":
+    os.system("chcp 65001 > nul")
+    sys.stdout.write(u"")
 
 
+import csv
+import io
+import urllib.request
 
 
+CSV_URL = (
+    "https://raw.githubusercontent.com/DMCommunity/dmcommunity_shared/"
+    "master/ConflictingMedications.csv"
+)
+
+FALLBACK_CSV = """Medication 1,Medication 2,Interaction,Risk
+Levofloxacin,Coumadin,Increases anticoagulant effect,Elevated bleeding risk (restricted fallback csv)
+Levofloxacin,"Antacids (aluminum, magnesium)",Reduces levofloxacin absorption,Reduced antibiotic effectiveness
+Amoxicillin,Methotrexate,Reduces methotrexate clearance,Methotrexate toxicity risk
+Amoxicillin,Lithium,Raises lithium levels,Lithium toxicity risk
+Amoxicillin,"NSAIDs (ibuprofen, naproxen)",Increases amoxicillin levels slightly,Mild toxicity risk
+Cefuroxime,Coumadin,Increases anticoagulant effect,Elevated bleeding risk
+Cefuroxime,"NSAIDs (ibuprofen, naproxen)",Increases cefuroxime levels slightly,Mild toxicity risk
+Cefuroxime,Lithium,Raises lithium levels,Lithium toxicity risk
+"""
+
+from typing import List, Dict
+
+def load_conflicts() -> List[Dict]:
+    """Fetch conflict CSV from GitHub; fall back to embedded copy on error."""
+    try:
+        with urllib.request.urlopen(CSV_URL, timeout=5) as resp:
+            content = resp.read().decode("utf-8")
+        print("  [Drug DB] Conflict database loaded from GitHub.")
+    except Exception:
+        print("  [Drug DB] Could not reach GitHub – using built-in database.")
+        content = FALLBACK_CSV
+
+    reader = csv.DictReader(io.StringIO(content))
+    return list(reader)
+
+
+def find_conflicts(
+    drug: str, patient_meds: List[str], conflict_db: List[Dict]
+) -> List[Dict]:
+    """
+    Return rows from conflict_db where 'Medication 1' matches *drug* and
+    'Medication 2' fuzzy-matches any medication the patient is taking.
+    Matching is case-insensitive and substring-based so that generic
+    names match branded equivalents (e.g. "Coumadin" matches "Coumadin").
+    """
+    hits = []
+    drug_lower = drug.lower()
+    for row in conflict_db:
+        if row["Medication 1"].strip().lower() != drug_lower:
+            continue
+        db_med2 = row["Medication 2"].strip().lower()
+        for pm in patient_meds:
+            pm_lower = pm.lower()
+            # Match if either is a substring of the other
+            if pm_lower in db_med2 or db_med2 in pm_lower:
+                hits.append(row)
+                break
+    return hits
+
+def separator(char="─", width=60):
+    print(char * width)
+
+def section(title: str):
+    print()
+    separator()
+    print(f"  {title}")
+    separator()
+
+
+def ask_list(prompt: str) -> List[str]:
+    """Ask for a comma-separated list; return stripped, non-empty tokens."""
+    raw = input(f"{prompt} ").strip()
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+patient_meds: List[str] = []
+conflicts: List[Dict] = []
+
+def AskActiveMedications():
+    global patient_meds
+    patient_meds = ask_list("List all active medications (comma-separated; enter = none):")
+    return 1
+
+
+def ConflictsDetected_with(drug):
+    global patient_meds, conflicts
+    if patient_meds:
+        print()
+        conflict_db = load_conflicts()
+        conflicts = find_conflicts(drug, patient_meds, conflict_db)    
+    return 1 if conflicts else 0
+
+
+def ActiveMedicationsReported():
+    global patient_meds
+    return 1 if patient_meds else 0
+
+
+def Print_Interaction_Warnings(drug):
+    global patient_meds, conflicts
+    
+    if patient_meds:
+        print()
+        print(f"  Active medications : {', '.join(patient_meds)}")
+
+    if conflicts:
+        section("⚠  Drug Interaction Warnings")
+        for c in conflicts:
+            print(f"  • {drug} ↔ {c['Medication 2'].strip()}")
+            print(f"      Interaction : {c['Interaction'].strip()}")
+            print(f"      Risk        : {c['Risk'].strip()}")
+            print()
+        print(
+            "  Please consult a clinical pharmacist before prescribing "
+            f"{drug} alongside the above medications.\n" )
+
+    patient_meds = []
+    conflicts = []    
+
+    return 1

@@ -1,0 +1,162 @@
+
+
+# Extended sinisitus diagnose application
+
+# Ask if the next patient should be evaluated; No => exit.
+# Ask for patient ID; if not in the database, display an error message
+# Retrieve name and date of birth from the database; display id, name and age on the current date to the user.
+# Ask other relevant questions regarding medication and dosage. 
+# Ask the user about other medications to determine interactions with the proposed medication. 
+
+
+PostgreSQL_database: "sinusitus"
+# SQLite_database: "database/sinusitus.db"  
+
+Initial_instructions:
+>>: Yes = 1         # Done,True
+End_Instructions
+
+
+rTable 0: Determine patient therapy
+If:                                        | 0| 1| 2| 3|
+'Therapy request for next patient'         | Y| Y| Y| N|
+'Patient found in database'                | Y| Y| N| -|
+Greeting_text = Yes                        | Y| Y| -| -|
+Medication <> ""                           | Y| Y| -| -|
+Dosage is Half                             | Y| N| -| -|
+Dosage is Full                             | -| Y| -| -|
+Ask_active_medications = Yes               | Y| Y| -| -|     
+Then:                                                   
+Outcome is Stop_application                |  |  |  | X|                                               
+Outcome is Patient_not_found               |  |  | X|  |
+Outcome is Half_Dosage                     | X|  |  |  |
+Outcome is Full_Dosage                     |  | X|  |  |
+Check_Drug_Interaction is Yes              | X| X|  |  |
+# .......
+
+Proposition: 'Therapy request for next patient'
+Askable_using: "**?"
+
+Proposition: 'Patient found in database'
+Obtain_instance_from_database_view: patient
+
+Attribute: Greeting_text            Type: Integer
+Equals: print_texts("Patient ", patient_id, ". ", patient.name, "; date of birth: ", patient.date_of_birth, " is now ", str(Age), " years old. ")  
+# returns a 1 after 
+
+Attribute: Ask_active_medications   Type: Integer
+Equals: AskActiveMedications()
+# returns a 1 after 
+
+
+Table 1: Determine Medication
+If:                                        | 0| 1| 2|
+'Patient is allergic to Penicillin'        | Y| N| N|
+Age >= 18                                  | -| Y| N|
+Then:
+Medication = "Levofloxacin"                | X|  |  |
+Medication = "Amoxicillin"                 |  | X|  |
+Medication = "Cefuroxime"                  |  |  | X|
+# .......
+
+Proposition: 'Patient is allergic to Penicillin'
+Askable_using: "**?"
+
+
+Table 2: Determine Dosage
+If:                                        | 0| 1| 2| 3| 4|
+Age < 15                                   | Y| N| N| N| N|
+Age > 60                                   | -| Y| N| N| N|
+Patient_Creatinine_Level > 1.4             | -| -| Y| Y| N|               
+Patient_Creatinine_Clearance < 50.0        | -| -| Y| N| -|
+Then:                                                   
+Dosage is Half                             | X| X| X|  |  |
+Dosage is Full                             |  |  |  | X| X|
+# .......
+
+rTable 3: Drug interaction
+If:                                        | 0| 1|
+Check_Drug_Interaction is Yes              | Y| Y|
+Conflicts_detected = Yes                   | Y| N|
+Active_medications_reported = Yes          | -| Y|     
+Then:                                             
+Drug_Interaction_Warnings is Yes           | X|  |
+Drug_Interaction_Warnings is No            |  | X|
+# .......
+
+Attribute: Conflicts_detected               Type: Integer        
+Equals: ConflictsDetected_with(Medication)
+Attribute: Active_medications_reported      Type: Integer       
+Equals: ActiveMedicationsReported()
+# returns a 1 after 
+
+Attribute: dummy  Type: Integer
+
+
+GoalAttribute: Outcome
+Repeat_until: Stop_application
+
+Case: Stop_application
+Print: "---- Ended ------ "
+
+Case: Patient_not_found
+Print: "Patient not found! "
+
+Case: Half_Dosage
+Print: "---------------------------------------------------------"                   
+Print: "Recommended Medication: %s." Medication              
+Print: "250mg every 24 hours for 14 days"
+Print: "---------------------------------------------------------"
+Print: "Calculated Creatinine Clearance: %s" Patient_Creatinine_Clearance.getvalue
+
+Case: Full_Dosage
+Print: "---------------------------------------------------------"                   
+Print: "Recommended Medication: %s." Medication              
+Print: "500mg every 24 hours for 14 days"
+Print: "---------------------------------------------------------"
+Print: "Calculated Creatinine Clearance: %s" Patient_Creatinine_Clearance.getvalue
+
+
+GoalAttribute: Drug_Interaction_Warnings
+
+Case: Yes
+>>: dummy = Print_Interaction_Warnings(Medication)
+
+Case: No
+Print: "==> No known interactions between %s and the reported medications."  Medication
+Print: "         "
+
+Attribute: patient.name           Type: Text
+Attribute: patient.date_of_birth  Type: Text
+
+Attribute: Age         
+Equals: actual_age(date_today(), patient.date_of_birth)
+# date formats: 'yyyy-mm-dd'
+
+Attribute: Weight    Type: Real
+Askable_using: "What is the weight of the patient?"
+
+Attribute: Patient_Creatinine_Level 
+Askable_using: "What is the creatine level of the patient?"
+
+Attribute: Patient_Creatinine_Clearance
+Equals: round((140 - Age) * Weight / (Patient_Creatinine_Level*72), 2)
+
+Attribute: patient_id   Type: Integer
+Equals: int(input("Enter patient identification number : "))
+
+Database_view: patient 
+With_attributes: name, date_of_birth
+Query:
+	select name, date_of_birth
+	from patient
+	where id = '%s'
+With_arguments: patient_id
+
+                      
+                   
+                      
+
+
+
+  
