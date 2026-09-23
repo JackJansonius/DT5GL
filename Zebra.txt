@@ -1,0 +1,256 @@
+
+
+
+Initial_instructions:
+>>: last_perm = get_num_perms() - 1          
+>>: True =  1 
+End_Instructions
+
+
+rTable 1: Check first categorie (colours) or done 
+If:                                            | 0| 1| 2| 
+next i1 in [0 - last_perm]                     | Y| Y| N|
+True = right_of(green, ivory)                  | Y| N| -|
+Then:                                                 
+Category1 is selected                          | X|  |  |
+Category1 is check_next                        |  | X|  |
+Category1 is finished                          |  |  | X|
+# .......
+# 6. The green house is immediately to the right of the ivory house
+
+
+rTable 2: Check second categorie (nationalities)
+If:                                            | 0| 1| 2| 3|
+Category1.getvalue is selected                 | Y| Y| Y| N|
+next i2 in [0 - last_perm]                     | Y| Y| N| -|
+True = englishman == red                       | Y| -| -| -|
+True = norwegian == 1                          | Y| -| -| -|
+True = next_to(norwegian, blue)                | Y| -| -| -|
+Then:                                                 
+Category2 is selected                          | X|  |  |  |
+Category2 is check_next                        |  | X|  |  |
+Category2 is finished                          |  |  | X| X|
+
+# .......
+# 2. The Englishman lives in the red house
+# 10. The Norwegian lives in the first house
+# 15. The Norwegian lives next to the blue house
+
+
+rTable 3: Check third categorie (drinks)
+If:                                            | 0| 1| 2| 3|
+Category2.getvalue is selected                 | Y| Y| Y| N| 
+next i3 in [0 - last_perm]                     | Y| Y| N| -|
+True = coffee == green                         | Y| -| -| -|
+True = tea == ukrainian                        | Y| -| -| -|
+True = milk == 3                               | Y| -| -| -|
+Then:                                                 
+Category3 is selected                          | X|  |  |  |
+Category3 is check_next                        |  | X|  |  |
+Category3 is finished                          |  |  | X| X|
+# .......
+# 4. Coffee is drunk in the green house
+# 5. The Ukrainian drinks tea
+# 9. Milk is drunk in the middle house
+
+
+rTable 4: Check fourth categorie (smokes)
+If:                                            | 0| 1| 2| 3|
+Category3.getvalue is selected                 | Y| Y| Y| N|  
+next i4 in [0 - last_perm]                     | Y| Y| N| -|
+True = kools == yellow                         | Y| -| -| -|
+True = lucky_strike == oj                      | Y| -| -| -|
+True = parliaments == japanese                 | Y| -| -| -|
+Then:                                                 
+Category4 is selected                          | X|  |  |  |
+Category4 is check_next                        |  | X|  |  |
+Category4 is finished                          |  |  | X| X|
+# .......
+# 8. Kools are smoked in the yellow house
+# 13. The Lucky Strike smoker drinks orange juice
+# 14. The Japanese smokes Parliaments
+
+
+rTable 5: Check fifth categorie (pets)
+If:                                            | 0| 1| 2| 3|
+Category4.getvalue is selected                 | Y| Y| Y| N| 
+next i5 in [0 - last_perm]                     | Y| Y| N| -|
+True = dog == spaniard                         | Y| -| -| -|
+True = snails == old_gold                      | Y| -| -| -|
+True = next_to(chesterfields, fox)             | Y| -| -| -|
+True = next_to(kools, horse)                   | Y| -| -| -|
+Then:                                                 
+Category5 is selected                          | X|  |  |  |
+Category5 is check_next                        |  | X|  |  |
+Category5 is finished                          |  |  | X| X|
+# .......
+# 3. The Spaniard owns the dog
+# 7. The Old Gold smoker owns snails
+# 11. The man who smokes Chesterfields lives in the house next to the man with the fox
+# 12. Kools are smoked in the house next to the house where the horse is kept                            
+
+Attribute: fn         Type: Integer
+Attribute: last_perm  Type: Integer
+
+
+# red, green, ivory, yellow, blue
+Attribute: red             Type: Integer  
+Equals: get_perm(i1,0)
+Attribute: green           Type: Integer  
+Equals: get_perm(i1,1)
+Attribute: ivory           Type: Integer  
+Equals: get_perm(i1,2)
+Attribute: yellow          Type: Integer  
+Equals: get_perm(i1,3)
+Attribute: blue            Type: Integer  
+Equals: get_perm(i1,4)
+
+# englishman, spaniard, ukrainian, norwegian, japanese
+Attribute: englishman      Type: Integer  
+Equals: get_perm(i2,0)
+Attribute: spaniard        Type: Integer  
+Equals: get_perm(i2,1)
+Attribute: ukrainian       Type: Integer  
+Equals: get_perm(i2,2)
+Attribute: norwegian       Type: Integer  
+Equals: get_perm(i2,3)
+Attribute: japanese        Type: Integer  
+Equals: get_perm(i2,4)
+
+# coffee, tea, milk, oj, water
+Attribute: coffee          Type: Integer  
+Equals: get_perm(i3,0)
+Attribute: tea             Type: Integer  
+Equals: get_perm(i3,1)
+Attribute: milk            Type: Integer  
+Equals: get_perm(i3,2)
+Attribute: oj              Type: Integer  
+Equals: get_perm(i3,3)
+Attribute: water           Type: Integer  
+Equals: get_perm(i3,4)
+
+# old_gold, kools, chesterfields, lucky_strike, parliaments
+Attribute: old_gold        Type: Integer  
+Equals: get_perm(i4,0)
+Attribute: kools           Type: Integer  
+Equals: get_perm(i4,1)
+Attribute: chesterfields   Type: Integer  
+Equals: get_perm(i4,2)
+Attribute: lucky_strike    Type: Integer  
+Equals: get_perm(i4,3)
+Attribute: parliaments     Type: Integer  
+Equals: get_perm(i4,4)
+
+# dog, snails, fox, horse, zebra
+Attribute: dog             Type: Integer  
+Equals: get_perm(i5,0)
+Attribute: snails          Type: Integer  
+Equals: get_perm(i5,1)
+Attribute: fox             Type: Integer  
+Equals: get_perm(i5,2)
+Attribute: horse           Type: Integer  
+Equals: get_perm(i5,3)
+Attribute: zebra           Type: Integer  
+Equals: get_perm(i5,4)
+
+
+# Repeat_until: finished
+# Print: "#REM# - "
+
+GOALATTRIBUTE: Category1
+Repeat_until: finished
+
+Case: finished
+>>: fn = print_solutions()
+
+Case: selected
+Print: "#REM# - "
+Case: check_next
+Print: "#REM# - i1 = %s"  i1
+
+
+GOALATTRIBUTE: Category2
+Repeat_until: finished
+
+Case: finished
+Print: "#REM# - "  
+Case: selected
+Print: "#REM# - "
+Case: check_next
+Print: "#REM# - i1 = %s; i2= %s "  i1  i2
+
+
+GOALATTRIBUTE: Category3
+Repeat_until: finished
+
+Case: finished
+Print: "#REM# - "  
+Case: selected
+Print: "#REM# - "
+Case: check_next
+Print: "#REM# - i1 = %s; i2= %s; i3= %s "  i1  i2  i3
+
+
+GOALATTRIBUTE: Category4
+Repeat_until: finished
+
+Case: finished
+Print: "#REM# - "  
+Case: selected
+Print: "#REM# - "
+Case: check_next
+Print: "#REM# - i1 = %s; i2= %s; i3= %s; i4= %s "  i1  i2  i3 i4
+
+
+GOALATTRIBUTE: Category5
+Repeat_until: finished
+
+Case: finished
+Print: "#REM# - "  
+
+Case: selected
+Print: "Solution found at i1 = %s; i2= %s; i3= %s; i4= %s; i5= %s "  i1 i2 i3 i4 i5
+>>: fn = collect_solution_cat1(red, green, ivory, yellow, blue)
+>>: fn = collect_solution_cat2(englishman, spaniard, ukrainian, norwegian, japanese)
+>>: fn = collect_solution_cat3(coffee, tea, milk, oj, water)
+>>: fn = collect_solution_cat4(old_gold, kools, chesterfields, lucky_strike, parliaments)
+>>: fn = collect_solution_cat5(dog, snails, fox, horse, zebra)
+>>: fn = append_solution()
+
+Case: check_next
+Print: "#REM# - i1 = %s; i2= %s; i3= %s; i4= %s; i5= %s "  i1 i2 i3 i4 i5
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

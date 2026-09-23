@@ -5,7 +5,7 @@
 # Name of database from the script via instruction PostgreSQL_database: "database name"
 psql_host="localhost"           # "127.0.0.1"
 psql_user="postgres"
-psql_password="******"
+psql_password="********"
 psql_port="5432"                # defaults to 5432 if it is not provided
 
 
@@ -406,3 +406,131 @@ def Print_Interaction_Warnings(drug):
     conflicts = []    
 
     return 1
+    
+
+###################################################################    
+# functions for challenge: September 2026 Zebra Puzzle       ###### 
+# https://dmcommunity.org/challenges/2026-09-zebra-puzzle/   ######
+###################################################################
+    
+
+
+from itertools import permutations
+
+# Houses are numbered 1 through 5 (left to right)
+HOUSES = [1, 2, 3, 4, 5]
+
+# Precompute all 120 permutations as an array, so we can loop through
+# them with an index i instead of iterating directly over the
+# permutations object.
+
+ALL_PERMS = list(permutations(HOUSES))
+NUM_PERMS = len(ALL_PERMS)
+
+def get_perm(x, y): 
+    return ALL_PERMS[x][y]
+    
+def get_num_perms():
+    return NUM_PERMS
+    
+def right_of(a, b):
+    """a is directly to the right of b"""
+    return a == b + 1
+
+def next_to(a, b):
+    """a is directly next to b (left or right)"""
+    return abs(a - b) == 1    
+
+
+_cats = {}
+solutions = []
+
+ 
+def collect_solution_cat1(red, green, ivory, yellow, blue):
+    _cats[1] = (red, green, ivory, yellow, blue)
+    return 1
+ 
+def collect_solution_cat2(englishman, spaniard, ukrainian, norwegian, japanese):
+    _cats[2] = (englishman, spaniard, ukrainian, norwegian, japanese)
+    return 1
+ 
+def collect_solution_cat3(coffee, tea, milk, oj, water):
+    _cats[3] = (coffee, tea, milk, oj, water)
+    return 1
+ 
+def collect_solution_cat4(old_gold, kools, chesterfields, lucky_strike, parliaments):
+    _cats[4] = (old_gold, kools, chesterfields, lucky_strike, parliaments)
+    return 1
+ 
+def collect_solution_cat5(dog, snails, fox, horse, zebra):
+    _cats[5] = (dog, snails, fox, horse, zebra)
+    return 1
+ 
+def append_solution():
+    # Restore the five tuples to their original variable names...
+    red, green, ivory, yellow, blue = _cats[1]
+    englishman, spaniard, ukrainian, norwegian, japanese = _cats[2]
+    coffee, tea, milk, oj, water = _cats[3]
+    old_gold, kools, chesterfields, lucky_strike, parliaments = _cats[4]
+    dog, snails, fox, horse, zebra = _cats[5]
+ 
+    # All 15 clues have now been checked -> valid solution
+    solution = {
+        'house': HOUSES,
+        'red': red, 'green': green, 'ivory': ivory,
+        'yellow': yellow, 'blue': blue,
+        'englishman': englishman, 'spaniard': spaniard,
+        'ukrainian': ukrainian, 'norwegian': norwegian,
+        'japanese': japanese,
+        'coffee': coffee, 'tea': tea, 'milk': milk,
+        'oj': oj, 'water': water,
+        'old_gold': old_gold, 'kools': kools,
+        'chesterfields': chesterfields,
+        'lucky_strike': lucky_strike,
+        'parliaments': parliaments,
+        'dog': dog, 'snails': snails, 'fox': fox,
+        'horse': horse, 'zebra': zebra,
+    }
+    solutions.append(solution)
+    return 1
+    
+
+def print_solution(sol):
+    colors = {v: k for k, v in [('red', sol['red']), ('green', sol['green']),
+                                  ('ivory', sol['ivory']), ('yellow', sol['yellow']),
+                                  ('blue', sol['blue'])]}
+    nationalities = {v: k for k, v in [('Englishman', sol['englishman']),
+                                        ('Spaniard', sol['spaniard']),
+                                        ('Ukrainian', sol['ukrainian']),
+                                        ('Norwegian', sol['norwegian']),
+                                        ('Japanese', sol['japanese'])]}
+    drinks = {v: k for k, v in [('coffee', sol['coffee']), ('tea', sol['tea']),
+                                  ('milk', sol['milk']), ('orange juice', sol['oj']),
+                                  ('water', sol['water'])]}
+    smokes = {v: k for k, v in [('Old Gold', sol['old_gold']), ('Kools', sol['kools']),
+                                  ('Chesterfields', sol['chesterfields']),
+                                  ('Lucky Strike', sol['lucky_strike']),
+                                  ('Parliaments', sol['parliaments'])]}
+    pets = {v: k for k, v in [('dog', sol['dog']), ('snails', sol['snails']),
+                                ('fox', sol['fox']), ('horse', sol['horse']),
+                                ('zebra', sol['zebra'])]}
+
+    print(f"{'House':<7}{'Color':<8}{'Nationality':<13}{'Drink':<14}{'Smoke':<15}{'Pet':<8}")
+    for h in HOUSES:
+        print(f"{h:<7}{colors[h]:<8}{nationalities[h]:<13}{drinks[h]:<14}{smokes[h]:<15}{pets[h]:<8}")
+
+    zebra_house = sol['zebra']
+    nationality = nationalities[zebra_house]
+    print(f"\n>>> The {nationality} owns the zebra, in house {zebra_house}.")
+
+
+
+def print_solutions():
+    global solutions
+    print(f"Number of solutions found: {len(solutions)}\n")
+    for sol in solutions:
+        print_solution(sol)
+    return 1
+
+
+    
